@@ -17,6 +17,10 @@ class UserFirestore {
     return userDoc.collection('customers');
   }
 
+  CollectionReference<Map<String, dynamic>> get customerCnpjs {
+    return userDoc.collection('customerCnpjs');
+  }
+
   CollectionReference<Map<String, dynamic>> get products {
     return userDoc.collection('products');
   }

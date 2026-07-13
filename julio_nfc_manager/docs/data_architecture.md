@@ -5,6 +5,7 @@ All application data is scoped by the authenticated Firebase user:
 ```txt
 users/{uid}
   customers/{customerId}
+  customerCnpjs/{cnpjDigits}
   products/{productId}
   nfc/{nfcId}
   nfcReturns/{returnId}
@@ -15,9 +16,22 @@ users/{uid}
 ```txt
 name: string
 cnpj: string
+cnpjDigits: string
 createdAt: timestamp
 updatedAt: timestamp
 ```
+
+## Customer CNPJ Index
+
+```txt
+customerId: string
+createdAt: timestamp
+updatedAt: timestamp
+```
+
+`customerCnpjs/{cnpjDigits}` enforces unique customer CNPJ values per user.
+Different users can still register the same CNPJ because the index is scoped
+under `users/{uid}`.
 
 ## Products
 

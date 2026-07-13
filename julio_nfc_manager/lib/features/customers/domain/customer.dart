@@ -7,6 +7,7 @@ class Customer {
     required this.id,
     required this.name,
     required this.cnpj,
+    required this.cnpjDigits,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -14,6 +15,7 @@ class Customer {
   final String id;
   final String name;
   final String cnpj;
+  final String cnpjDigits;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -26,6 +28,7 @@ class Customer {
       id: snapshot.id,
       name: data['name'] as String? ?? '',
       cnpj: data['cnpj'] as String? ?? '',
+      cnpjDigits: data['cnpjDigits'] as String? ?? '',
       createdAt: readFirestoreDate(data['createdAt']),
       updatedAt: readFirestoreDate(data['updatedAt']),
     );
