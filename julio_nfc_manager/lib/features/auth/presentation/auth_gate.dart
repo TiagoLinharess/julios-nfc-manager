@@ -1,0 +1,259 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
+import '../data/auth_repository.dart';
+
+class AuthGate extends StatefulWidget {
+  const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  final AuthRepository _authRepository = AuthRepository();
+
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _authRepository.signInWithGoogle();
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _errorMessage = 'Firebase Auth: ${error.code}';
+      });
+    } on GoogleSignInException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _errorMessage = 'Google Sign-In: ${error.code.name}';
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _errorMessage = error.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _signOut() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _authRepository.signOut();
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _errorMessage = 'Nao foi possivel sair.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: _authRepository.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final user = snapshot.data;
+
+        if (user == null) {
+          return _LoginPage(
+            isLoading: _isLoading,
+            errorMessage: _errorMessage,
+            onSignInWithGoogle: _signInWithGoogle,
+          );
+        }
+
+        return _SignedInPage(
+          user: user,
+          isLoading: _isLoading,
+          errorMessage: _errorMessage,
+          onSignOut: _signOut,
+        );
+      },
+    );
+  }
+}
+
+class _LoginPage extends StatelessWidget {
+  const _LoginPage({
+    required this.isLoading,
+    required this.errorMessage,
+    required this.onSignInWithGoogle,
+  });
+
+  final bool isLoading;
+  final String? errorMessage;
+  final VoidCallback onSignInWithGoogle;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Icon(Icons.nfc, size: 64, color: colorScheme.primary),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Julio NFC Manager',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 32),
+                  FilledButton.icon(
+                    onPressed: isLoading ? null : onSignInWithGoogle,
+                    icon: isLoading
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.login),
+                    label: const Text('Entrar com Google'),
+                  ),
+                  if (errorMessage != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: colorScheme.error),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SignedInPage extends StatelessWidget {
+  const _SignedInPage({
+    required this.user,
+    required this.isLoading,
+    required this.errorMessage,
+    required this.onSignOut,
+  });
+
+  final User user;
+  final bool isLoading;
+  final String? errorMessage;
+  final VoidCallback onSignOut;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: colorScheme.inversePrimary,
+        title: const Text('Julio NFC Manager'),
+        actions: [
+          IconButton(
+            onPressed: isLoading ? null : onSignOut,
+            tooltip: 'Sair',
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                CircleAvatar(
+                  radius: 36,
+                  backgroundImage: user.photoURL == null
+                      ? null
+                      : NetworkImage(user.photoURL!),
+                  child: user.photoURL == null
+                      ? const Icon(Icons.person, size: 36)
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  user.displayName ?? 'Usuario autenticado',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  user.email ?? user.uid,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Login conectado. Proximo passo: cadastros de clientes e produtos.',
+                  textAlign: TextAlign.center,
+                ),
+                if (errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: colorScheme.error),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

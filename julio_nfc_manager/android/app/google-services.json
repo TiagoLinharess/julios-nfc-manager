@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "441378487264-lfh5atat6idol19edcngkkjtmp3vr5an.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.julio_nfc_manager",
+            "certificate_hash": "95e2676e2de7d2adda5c68d275787dadb62e7813"
+          }
+        },
+        {
           "client_id": "441378487264-m3m1lu0et9rq6n2hd5rmubiv4rpi920o.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -29,6 +37,13 @@
             {
               "client_id": "441378487264-m3m1lu0et9rq6n2hd5rmubiv4rpi920o.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "441378487264-q3ceinodtanh9dn6fn9ancp9ds7f4a5p.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.julioNfcManager"
+              }
             }
           ]
         }
