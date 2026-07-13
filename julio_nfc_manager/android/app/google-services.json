@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "441378487264",
+    "project_id": "julio-nfc-manager",
+    "storage_bucket": "julio-nfc-manager.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:441378487264:android:f5cc1ce6f0bd4931cfc985",
+        "android_client_info": {
+          "package_name": "com.example.julio_nfc_manager"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "441378487264-m3m1lu0et9rq6n2hd5rmubiv4rpi920o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBGAoC5TbDkzY920cBKOEoslX2o_hrpE9M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "441378487264-m3m1lu0et9rq6n2hd5rmubiv4rpi920o.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

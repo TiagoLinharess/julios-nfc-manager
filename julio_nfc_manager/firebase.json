@@ -1,0 +1,29 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "julio-nfc-manager",
+          "appId": "1:441378487264:android:f5cc1ce6f0bd4931cfc985",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "julio-nfc-manager",
+          "configurations": {
+            "android": "1:441378487264:android:f5cc1ce6f0bd4931cfc985",
+            "ios": "1:441378487264:ios:f447f6c8fa081e35cfc985",
+            "macos": "1:441378487264:ios:f447f6c8fa081e35cfc985",
+            "web": "1:441378487264:web:a456728afbee1e04cfc985",
+            "windows": "1:441378487264:web:477ba3aa1b1fb4d6cfc985"
+          }
+        }
+      }
+    }
+  }
+}
