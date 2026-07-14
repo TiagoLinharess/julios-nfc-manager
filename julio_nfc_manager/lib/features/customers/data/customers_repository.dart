@@ -21,6 +21,11 @@ class CustomersRepository {
         .map((snapshot) => snapshot.docs.map(Customer.fromFirestore).toList());
   }
 
+  Future<List<Customer>> getAll() async {
+    final snapshot = await store.customers.orderBy('name').get();
+    return snapshot.docs.map(Customer.fromFirestore).toList();
+  }
+
   Stream<Customer?> watchById(String id) {
     return store.customers.doc(id).snapshots().map((snapshot) {
       if (!snapshot.exists) {

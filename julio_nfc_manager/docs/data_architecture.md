@@ -52,9 +52,21 @@ code: string
 date: string
 products: ProductSnapshot[]
 customerId: string
-amount: int
+totalValue: string
 createdAt: timestamp
 updatedAt: timestamp
+```
+
+`totalValue` is the invoice value. It follows the same Brazilian decimal string
+format used by product prices, for example `1500,00`.
+
+`products` stores snapshots of the selected products, including:
+
+```txt
+productId: string
+name: string
+pricePerKg: string
+quantityKg: string
 ```
 
 ## NFC Returns

@@ -6,17 +6,23 @@ class NfcProductSnapshot {
     required this.productId,
     required this.name,
     required this.pricePerKg,
+    required this.quantityKg,
   });
 
   final String productId;
   final String name;
   final String pricePerKg;
+  final String quantityKg;
 
-  factory NfcProductSnapshot.fromProduct(Product product) {
+  factory NfcProductSnapshot.fromProduct(
+    Product product, {
+    required String quantityKg,
+  }) {
     return NfcProductSnapshot(
       productId: product.id,
       name: product.name,
       pricePerKg: product.pricePerKg,
+      quantityKg: formatBrDecimal(quantityKg),
     );
   }
 
@@ -27,6 +33,7 @@ class NfcProductSnapshot {
       pricePerKg: formatBrDecimal(
         map['pricePerKg'] as String? ?? map['amountKg'] as String? ?? '',
       ),
+      quantityKg: formatBrDecimal(map['quantityKg'] as String? ?? '1'),
     );
   }
 
@@ -35,6 +42,7 @@ class NfcProductSnapshot {
       'productId': productId,
       'name': name,
       'pricePerKg': pricePerKg,
+      'quantityKg': quantityKg,
     };
   }
 }

@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../features/customers/presentation/customers_page.dart';
+import '../../features/nfc/presentation/nfc_page.dart';
 import '../../features/products/presentation/products_page.dart';
 
 class AppShell extends StatefulWidget {
@@ -50,6 +51,7 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final pages = [
+      NfcPage(user: widget.user),
       CustomersPage(user: widget.user),
       ProductsPage(user: widget.user),
     ];
@@ -78,6 +80,11 @@ class _AppShellState extends State<AppShell> {
           });
         },
         destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.nfc_outlined),
+            selectedIcon: Icon(Icons.nfc),
+            label: 'NFC',
+          ),
           NavigationDestination(
             icon: Icon(Icons.people_outline),
             selectedIcon: Icon(Icons.people),

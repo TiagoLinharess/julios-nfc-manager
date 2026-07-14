@@ -16,6 +16,11 @@ class ProductsRepository {
         .map((snapshot) => snapshot.docs.map(Product.fromFirestore).toList());
   }
 
+  Future<List<Product>> getAll() async {
+    final snapshot = await store.products.orderBy('name').get();
+    return snapshot.docs.map(Product.fromFirestore).toList();
+  }
+
   Stream<Product?> watchById(String id) {
     return store.products.doc(id).snapshots().map((snapshot) {
       if (!snapshot.exists) {

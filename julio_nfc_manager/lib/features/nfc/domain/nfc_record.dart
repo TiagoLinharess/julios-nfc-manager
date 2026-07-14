@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/formatting/br_decimal_formatter.dart';
 import '../../../core/firestore/firestore_date.dart';
 import 'nfc_product_snapshot.dart';
 
@@ -10,7 +11,7 @@ class NfcRecord {
     required this.date,
     required this.products,
     required this.customerId,
-    required this.amount,
+    required this.totalValue,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -20,7 +21,7 @@ class NfcRecord {
   final String date;
   final List<NfcProductSnapshot> products;
   final String customerId;
-  final int amount;
+  final String totalValue;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -43,7 +44,9 @@ class NfcRecord {
               .toList()
           : const [],
       customerId: data['customerId'] as String? ?? '',
-      amount: data['amount'] as int? ?? 0,
+      totalValue: formatBrDecimal(
+        data['totalValue'] as String? ?? data['amount']?.toString() ?? '',
+      ),
       createdAt: readFirestoreDate(data['createdAt']),
       updatedAt: readFirestoreDate(data['updatedAt']),
     );

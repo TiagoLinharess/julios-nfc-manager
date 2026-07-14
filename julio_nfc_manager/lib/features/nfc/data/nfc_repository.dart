@@ -32,14 +32,14 @@ class NfcRepository {
     required String date,
     required String customerId,
     required List<NfcProductSnapshot> products,
-    required int amount,
+    required String totalValue,
   }) {
     return store.nfc.add({
       'code': code.trim(),
       'date': date.trim(),
       'products': products.map((product) => product.toMap()).toList(),
       'customerId': customerId,
-      'amount': amount,
+      'totalValue': totalValue.trim(),
       ...createTimestamps(),
     });
   }
@@ -50,14 +50,14 @@ class NfcRepository {
     required String date,
     required String customerId,
     required List<NfcProductSnapshot> products,
-    required int amount,
+    required String totalValue,
   }) {
     return store.nfc.doc(id).update({
       'code': code.trim(),
       'date': date.trim(),
       'products': products.map((product) => product.toMap()).toList(),
       'customerId': customerId,
-      'amount': amount,
+      'totalValue': totalValue.trim(),
       ...updateTimestamp(),
     });
   }
