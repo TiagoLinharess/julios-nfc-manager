@@ -1,15 +1,15 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import 'package:flutter/services.dart';
 
+import '../../../core/formatting/br_decimal_formatter.dart';
 import '../../../core/firestore/user_firestore.dart';
-import '../../../core/validation/cnpj_validator.dart';
-import '../data/customers_repository.dart';
-import '../domain/customer.dart';
-import 'customer_details_page.dart';
+import '../data/products_repository.dart';
+import '../domain/product.dart';
+import 'product_details_page.dart';
 
-class CustomersPage extends StatefulWidget {
-  const CustomersPage({
+class ProductsPage extends StatefulWidget {
+  const ProductsPage({
     required this.user,
     super.key,
   });
@@ -17,24 +17,24 @@ class CustomersPage extends StatefulWidget {
   final User user;
 
   @override
-  State<CustomersPage> createState() => _CustomersPageState();
+  State<ProductsPage> createState() => _ProductsPageState();
 }
 
-class _CustomersPageState extends State<CustomersPage> {
-  late final CustomersRepository _customersRepository;
+class _ProductsPageState extends State<ProductsPage> {
+  late final ProductsRepository _productsRepository;
 
   @override
   void initState() {
     super.initState();
-    _customersRepository = CustomersRepository(
+    _productsRepository = ProductsRepository(
       UserFirestore(uid: widget.user.uid),
     );
   }
 
-  Future<void> _showCustomerForm([Customer? customer]) async {
-    final result = await showDialog<_CustomerFormResult>(
+  Future<void> _showProductForm([Product? product]) async {
+    final result = await showDialog<_ProductFormResult>(
       context: context,
-      builder: (context) => _CustomerFormDialog(customer: customer),
+      builder: (context) => _ProductFormDialog(product: product),
     );
 
     if (result == null) {
@@ -42,40 +42,34 @@ class _CustomersPageState extends State<CustomersPage> {
     }
 
     try {
-      if (customer == null) {
-        await _customersRepository.create(
+      if (product == null) {
+        await _productsRepository.create(
           name: result.name,
-          cnpj: result.cnpj,
+          pricePerKg: result.pricePerKg,
         );
       } else {
-        await _customersRepository.update(
-          id: customer.id,
+        await _productsRepository.update(
+          id: product.id,
           name: result.name,
-          cnpj: result.cnpj,
+          pricePerKg: result.pricePerKg,
         );
       }
-    } on DuplicateCustomerCnpjException {
-      if (!mounted) {
-        return;
-      }
-
-      _showError('Ja existe um cliente com este CNPJ.');
     } catch (error) {
       if (!mounted) {
         return;
       }
 
-      _showError('Nao foi possivel salvar o cliente.');
+      _showError('Nao foi possivel salvar o produto.');
     }
   }
 
-  Future<bool> _confirmDelete(Customer customer) async {
+  Future<bool> _confirmDelete(Product product) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Excluir cliente'),
-          content: Text('Deseja excluir ${customer.name}?'),
+          title: const Text('Excluir produto'),
+          content: Text('Deseja excluir ${product.name}?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -95,14 +89,14 @@ class _CustomersPageState extends State<CustomersPage> {
     }
 
     try {
-      await _customersRepository.delete(customer.id);
+      await _productsRepository.delete(product.id);
       return true;
     } catch (error) {
       if (!mounted) {
         return false;
       }
 
-      _showError('Nao foi possivel excluir o cliente.');
+      _showError('Nao foi possivel excluir o produto.');
       return false;
     }
   }
@@ -113,14 +107,14 @@ class _CustomersPageState extends State<CustomersPage> {
     );
   }
 
-  Future<void> _openCustomerDetails(Customer customer) async {
+  Future<void> _openProductDetails(Product product) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) {
-          return CustomerDetailsPage(
-            customerId: customer.id,
-            customersRepository: _customersRepository,
-            onEdit: _showCustomerForm,
+          return ProductDetailsPage(
+            productId: product.id,
+            productsRepository: _productsRepository,
+            onEdit: _showProductForm,
             onDelete: _confirmDelete,
           );
         },
@@ -131,8 +125,8 @@ class _CustomersPageState extends State<CustomersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: StreamBuilder<List<Customer>>(
-        stream: _customersRepository.watchAll(),
+      body: StreamBuilder<List<Product>>(
+        stream: _productsRepository.watchAll(),
         builder: (context, snapshot) {
           final colorScheme = Theme.of(context).colorScheme;
 
@@ -143,27 +137,27 @@ class _CustomersPageState extends State<CustomersPage> {
           if (snapshot.hasError) {
             return _EmptyState(
               icon: Icons.error_outline,
-              title: 'Nao foi possivel carregar os clientes.',
+              title: 'Nao foi possivel carregar os produtos.',
               subtitle: snapshot.error.toString(),
             );
           }
 
-          final customers = snapshot.data ?? const <Customer>[];
+          final products = snapshot.data ?? const <Product>[];
 
-          if (customers.isEmpty) {
+          if (products.isEmpty) {
             return const _EmptyState(
-              icon: Icons.people_outline,
-              title: 'Nenhum cliente cadastrado',
-              subtitle: 'Toque no botao + para criar o primeiro cliente.',
+              icon: Icons.inventory_2_outlined,
+              title: 'Nenhum produto cadastrado',
+              subtitle: 'Toque no botao + para criar o primeiro produto.',
             );
           }
 
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-            itemCount: customers.length,
+            itemCount: products.length,
             separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
-              final customer = customers[index];
+              final product = products[index];
 
               return ListTile(
                 contentPadding: const EdgeInsets.symmetric(
@@ -173,33 +167,33 @@ class _CustomersPageState extends State<CustomersPage> {
                 leading: CircleAvatar(
                   backgroundColor: colorScheme.primaryContainer,
                   child: Text(
-                    customer.name.trim().isEmpty
+                    product.name.trim().isEmpty
                         ? '?'
-                        : customer.name.trim().substring(0, 1).toUpperCase(),
+                        : product.name.trim().substring(0, 1).toUpperCase(),
                   ),
                 ),
-                title: Text(customer.name),
-                subtitle: Text(customer.cnpj),
-                trailing: PopupMenuButton<_CustomerAction>(
+                title: Text(product.name),
+                subtitle: Text('R\$ ${product.pricePerKg}/kg'),
+                trailing: PopupMenuButton<_ProductAction>(
                   tooltip: 'Acoes',
                   onSelected: (action) {
                     switch (action) {
-                      case _CustomerAction.edit:
-                        _showCustomerForm(customer);
-                      case _CustomerAction.delete:
-                        _confirmDelete(customer);
+                      case _ProductAction.edit:
+                        _showProductForm(product);
+                      case _ProductAction.delete:
+                        _confirmDelete(product);
                     }
                   },
                   itemBuilder: (context) => const [
                     PopupMenuItem(
-                      value: _CustomerAction.edit,
+                      value: _ProductAction.edit,
                       child: ListTile(
                         leading: Icon(Icons.edit_outlined),
                         title: Text('Editar'),
                       ),
                     ),
                     PopupMenuItem(
-                      value: _CustomerAction.delete,
+                      value: _ProductAction.delete,
                       child: ListTile(
                         leading: Icon(Icons.delete_outline),
                         title: Text('Excluir'),
@@ -207,53 +201,48 @@ class _CustomersPageState extends State<CustomersPage> {
                     ),
                   ],
                 ),
-                onTap: () => _openCustomerDetails(customer),
+                onTap: () => _openProductDetails(product),
               );
             },
           );
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showCustomerForm(),
+        onPressed: () => _showProductForm(),
         icon: const Icon(Icons.add),
-        label: const Text('Cliente'),
+        label: const Text('Produto'),
       ),
     );
   }
 }
 
-class _CustomerFormDialog extends StatefulWidget {
-  const _CustomerFormDialog({this.customer});
+class _ProductFormDialog extends StatefulWidget {
+  const _ProductFormDialog({this.product});
 
-  final Customer? customer;
+  final Product? product;
 
   @override
-  State<_CustomerFormDialog> createState() => _CustomerFormDialogState();
+  State<_ProductFormDialog> createState() => _ProductFormDialogState();
 }
 
-class _CustomerFormDialogState extends State<_CustomerFormDialog> {
+class _ProductFormDialogState extends State<_ProductFormDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _cnpjFormatter = MaskTextInputFormatter(
-    mask: '##.###.###/####-##',
-    filter: {'#': RegExp('[0-9]')},
-  );
-
   late final TextEditingController _nameController;
-  late final TextEditingController _cnpjController;
+  late final TextEditingController _pricePerKgController;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.customer?.name ?? '');
-    _cnpjController = TextEditingController(
-      text: _cnpjFormatter.maskText(widget.customer?.cnpj ?? ''),
+    _nameController = TextEditingController(text: widget.product?.name ?? '');
+    _pricePerKgController = TextEditingController(
+      text: widget.product?.pricePerKg ?? '',
     );
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _cnpjController.dispose();
+    _pricePerKgController.dispose();
     super.dispose();
   }
 
@@ -263,19 +252,19 @@ class _CustomerFormDialogState extends State<_CustomerFormDialog> {
     }
 
     Navigator.of(context).pop(
-      _CustomerFormResult(
+      _ProductFormResult(
         name: _nameController.text,
-        cnpj: _cnpjController.text,
+        pricePerKg: formatBrDecimal(_pricePerKgController.text),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isEditing = widget.customer != null;
+    final isEditing = widget.product != null;
 
     return AlertDialog(
-      title: Text(isEditing ? 'Editar cliente' : 'Novo cliente'),
+      title: Text(isEditing ? 'Editar produto' : 'Novo produto'),
       content: Form(
         key: _formKey,
         child: Column(
@@ -287,7 +276,7 @@ class _CustomerFormDialogState extends State<_CustomerFormDialog> {
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Nome',
-                prefixIcon: Icon(Icons.business_outlined),
+                prefixIcon: Icon(Icons.inventory_2_outlined),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -299,24 +288,29 @@ class _CustomerFormDialogState extends State<_CustomerFormDialog> {
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _cnpjController,
-              inputFormatters: [_cnpjFormatter],
-              keyboardType: TextInputType.number,
+              controller: _pricePerKgController,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp('[0-9,]')),
+              ],
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
-                labelText: 'CNPJ',
-                prefixIcon: Icon(Icons.badge_outlined),
+                labelText: 'Valor por kg',
+                prefixIcon: Icon(Icons.paid_outlined),
+                prefixText: 'R\$ ',
+                suffixText: '/kg',
               ),
               validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Informe o CNPJ.';
+                final rawValue = value ?? '';
+                final price = parseBrDecimal(rawValue);
+
+                if (rawValue.trim().isEmpty) {
+                  return 'Informe o valor por kg.';
                 }
 
-                if (_cnpjFormatter.getUnmaskedText().length != 14) {
-                  return 'Informe os 14 digitos do CNPJ.';
-                }
-
-                if (!isValidCnpj(value)) {
-                  return 'Informe um CNPJ valido.';
+                if (price == null || price <= 0) {
+                  return 'Informe um valor valido.';
                 }
 
                 return null;
@@ -340,14 +334,14 @@ class _CustomerFormDialogState extends State<_CustomerFormDialog> {
   }
 }
 
-class _CustomerFormResult {
-  const _CustomerFormResult({
+class _ProductFormResult {
+  const _ProductFormResult({
     required this.name,
-    required this.cnpj,
+    required this.pricePerKg,
   });
 
   final String name;
-  final String cnpj;
+  final String pricePerKg;
 }
 
 class _EmptyState extends StatelessWidget {
@@ -394,7 +388,7 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-enum _CustomerAction {
+enum _ProductAction {
   edit,
   delete,
 }

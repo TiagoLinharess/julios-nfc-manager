@@ -1,21 +1,22 @@
+import '../../../core/formatting/br_decimal_formatter.dart';
 import '../../products/domain/product.dart';
 
 class NfcProductSnapshot {
   const NfcProductSnapshot({
     required this.productId,
     required this.name,
-    required this.amountKg,
+    required this.pricePerKg,
   });
 
   final String productId;
   final String name;
-  final String amountKg;
+  final String pricePerKg;
 
   factory NfcProductSnapshot.fromProduct(Product product) {
     return NfcProductSnapshot(
       productId: product.id,
       name: product.name,
-      amountKg: product.amountKg,
+      pricePerKg: product.pricePerKg,
     );
   }
 
@@ -23,7 +24,9 @@ class NfcProductSnapshot {
     return NfcProductSnapshot(
       productId: map['productId'] as String? ?? '',
       name: map['name'] as String? ?? '',
-      amountKg: map['amountKg'] as String? ?? '',
+      pricePerKg: formatBrDecimal(
+        map['pricePerKg'] as String? ?? map['amountKg'] as String? ?? '',
+      ),
     );
   }
 
@@ -31,7 +34,7 @@ class NfcProductSnapshot {
     return {
       'productId': productId,
       'name': name,
-      'amountKg': amountKg,
+      'pricePerKg': pricePerKg,
     };
   }
 }

@@ -2,7 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-import '../../customers/presentation/customers_page.dart';
+import '../../../app/presentation/app_shell.dart';
 import '../data/auth_repository.dart';
 
 class AuthGate extends StatefulWidget {
@@ -84,7 +84,7 @@ class _AuthGateState extends State<AuthGate> {
           );
         }
 
-        return CustomersPage(
+        return AppShell(
           user: user,
           onSignOut: _signOut,
         );

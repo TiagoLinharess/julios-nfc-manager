@@ -37,10 +37,13 @@ under `users/{uid}`.
 
 ```txt
 name: string
-amountKg: string
+pricePerKg: string
 createdAt: timestamp
 updatedAt: timestamp
 ```
+
+`pricePerKg` is stored as a Brazilian decimal string with comma separator and
+two decimal places, for example `12,50`.
 
 ## NFC
 

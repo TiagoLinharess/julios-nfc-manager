@@ -28,11 +28,11 @@ class ProductsRepository {
 
   Future<DocumentReference<Map<String, dynamic>>> create({
     required String name,
-    required String amountKg,
+    required String pricePerKg,
   }) {
     return store.products.add({
       'name': name.trim(),
-      'amountKg': amountKg.trim(),
+      'pricePerKg': pricePerKg.trim(),
       ...createTimestamps(),
     });
   }
@@ -40,11 +40,11 @@ class ProductsRepository {
   Future<void> update({
     required String id,
     required String name,
-    required String amountKg,
+    required String pricePerKg,
   }) {
     return store.products.doc(id).update({
       'name': name.trim(),
-      'amountKg': amountKg.trim(),
+      'pricePerKg': pricePerKg.trim(),
       ...updateTimestamp(),
     });
   }
