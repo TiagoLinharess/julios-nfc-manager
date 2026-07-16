@@ -62,7 +62,16 @@ class NfcRepository {
     });
   }
 
-  Future<void> delete(String id) {
-    return store.nfc.doc(id).delete();
+  Future<void> delete(String id) async {
+    final returns = await store.nfcReturnsFor(id).get();
+    final batch = store.firestore.batch();
+
+    for (final nfcReturn in returns.docs) {
+      batch.delete(nfcReturn.reference);
+    }
+
+    batch.delete(store.nfc.doc(id));
+
+    await batch.commit();
   }
 }

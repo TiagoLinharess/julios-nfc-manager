@@ -61,6 +61,7 @@ class _NfcFormPageState extends State<NfcFormPage> {
       text: _dateFormatter.maskText(nfc?.date ?? ''),
     );
     _totalValueController = TextEditingController(text: nfc?.totalValue ?? '');
+    _isCustomTotalValue = nfc != null && !_matchesSnapshotTotal(nfc);
     _selectedCustomerId = nfc?.customerId;
     _selectedProductIds.addAll(
       (nfc?.products ?? const <NfcProductSnapshot>[]).map(
@@ -84,7 +85,7 @@ class _NfcFormPageState extends State<NfcFormPage> {
     super.dispose();
   }
 
-  Future<void> _submit(List<Product> products) async {
+  Future<void> _submit(List<_NfcProductOption> productOptions) async {
     if (!_hasTriedSubmit) {
       setState(() {
         _hasTriedSubmit = true;
@@ -105,15 +106,12 @@ class _NfcFormPageState extends State<NfcFormPage> {
       return;
     }
 
-    final snapshots = products
-        .where((product) => _selectedProductIds.contains(product.id))
+    final snapshots = productOptions
+        .where((product) => _selectedProductIds.contains(product.productId))
         .map((product) {
-          final quantity = _quantityControllers[product.id]?.text ?? '';
+          final quantity = _quantityControllers[product.productId]?.text ?? '';
 
-          return NfcProductSnapshot.fromProduct(
-            product,
-            quantityKg: quantity,
-          );
+          return product.toSnapshot(quantityKg: quantity);
         })
         .toList();
 
@@ -186,14 +184,28 @@ class _NfcFormPageState extends State<NfcFormPage> {
   Future<_NfcFormData> _loadFormData() async {
     final customers = await widget.customersRepository.getAll();
     final products = await widget.productsRepository.getAll();
+    final snapshotOptions = widget.nfc?.products
+            .map(_NfcProductOption.fromSnapshot)
+            .toList() ??
+        const <_NfcProductOption>[];
+    final snapshotProductIds = {
+      for (final product in snapshotOptions) product.productId,
+    };
+    final productOptions = [
+      ...snapshotOptions,
+      ...products
+          .where((product) => !snapshotProductIds.contains(product.id))
+          .map(_NfcProductOption.fromProduct),
+    ];
 
     return _NfcFormData(
       customers: customers,
       products: products,
+      productOptions: productOptions,
     );
   }
 
-  void _addProduct(Product product, List<Product> products) {
+  void _addProduct(Product product, List<_NfcProductOption> productOptions) {
     setState(() {
       _selectedProductIds.add(product.id);
       _quantityControllers.putIfAbsent(
@@ -201,42 +213,45 @@ class _NfcFormPageState extends State<NfcFormPage> {
         () => TextEditingController(text: '1,00'),
       );
       _productToAddId = null;
-      _recalculateTotalValue(products);
+      _recalculateTotalValue(productOptions);
     });
   }
 
-  void _removeProduct(String productId, List<Product> products) {
+  void _removeProduct(
+    String productId,
+    List<_NfcProductOption> productOptions,
+  ) {
     setState(() {
       _selectedProductIds.remove(productId);
       final controller = _quantityControllers.remove(productId);
       controller?.dispose();
-      _recalculateTotalValue(products);
+      _recalculateTotalValue(productOptions);
     });
   }
 
-  void _onQuantityChanged(List<Product> products) {
+  void _onQuantityChanged(List<_NfcProductOption> productOptions) {
     if (_isCustomTotalValue) {
       return;
     }
 
-    _recalculateTotalValue(products);
+    _recalculateTotalValue(productOptions);
   }
 
-  void _recalculateTotalValue(List<Product> products) {
+  void _recalculateTotalValue(List<_NfcProductOption> productOptions) {
     if (_isCustomTotalValue) {
       return;
     }
 
     var total = 0.0;
 
-    for (final product in products) {
-      if (!_selectedProductIds.contains(product.id)) {
+    for (final product in productOptions) {
+      if (!_selectedProductIds.contains(product.productId)) {
         continue;
       }
 
       final price = parseBrDecimal(product.pricePerKg);
       final quantity = parseBrDecimal(
-        _quantityControllers[product.id]?.text ?? '',
+        _quantityControllers[product.productId]?.text ?? '',
       );
 
       if (price == null || quantity == null) {
@@ -251,6 +266,29 @@ class _NfcFormPageState extends State<NfcFormPage> {
         : total.toStringAsFixed(2).replaceAll('.', ',');
   }
 
+  bool _matchesSnapshotTotal(NfcRecord nfc) {
+    var total = 0.0;
+
+    for (final product in nfc.products) {
+      final price = parseBrDecimal(product.pricePerKg);
+      final quantity = parseBrDecimal(product.quantityKg);
+
+      if (price == null || quantity == null) {
+        continue;
+      }
+
+      total += price * quantity;
+    }
+
+    final savedTotal = parseBrDecimal(nfc.totalValue);
+
+    if (savedTotal == null) {
+      return false;
+    }
+
+    return (savedTotal - total).abs() < 0.01;
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<_NfcFormData>(
@@ -260,13 +298,17 @@ class _NfcFormPageState extends State<NfcFormPage> {
         final isLoading = snapshot.connectionState == ConnectionState.waiting;
         final customers = data?.customers ?? const <Customer>[];
         final products = data?.products ?? const <Product>[];
+        final productOptions =
+            data?.productOptions ?? const <_NfcProductOption>[];
 
         return Scaffold(
           appBar: AppBar(
             title: Text(_isEditing ? 'Editar NFC' : 'Nova NFC'),
             actions: [
               TextButton(
-                onPressed: _isSaving || isLoading ? null : () => _submit(products),
+                onPressed: _isSaving || isLoading
+                    ? null
+                    : () => _submit(productOptions),
                 child: _isSaving
                     ? const SizedBox.square(
                         dimension: 18,
@@ -286,6 +328,7 @@ class _NfcFormPageState extends State<NfcFormPage> {
                   dateFormatter: _dateFormatter,
                   customers: customers,
                   products: products,
+                  productOptions: productOptions,
                   productToAddId: _productToAddId,
                   selectedCustomerId: _selectedCustomerId,
                   selectedProductIds: _selectedProductIds,
@@ -304,17 +347,18 @@ class _NfcFormPageState extends State<NfcFormPage> {
                       _productToAddId = productId;
                     });
                   },
-                  onAddProduct: (product) => _addProduct(product, products),
+                  onAddProduct: (product) =>
+                      _addProduct(product, productOptions),
                   onRemoveProduct: (productId) {
-                    _removeProduct(productId, products);
+                    _removeProduct(productId, productOptions);
                   },
-                  onQuantityChanged: () => _onQuantityChanged(products),
+                  onQuantityChanged: () => _onQuantityChanged(productOptions),
                   onCustomTotalValueChanged: (isCustom) {
                     setState(() {
                       _isCustomTotalValue = isCustom;
 
                       if (!isCustom) {
-                        _recalculateTotalValue(products);
+                        _recalculateTotalValue(productOptions);
                       }
                     });
                   },
@@ -329,10 +373,49 @@ class _NfcFormData {
   const _NfcFormData({
     required this.customers,
     required this.products,
+    required this.productOptions,
   });
 
   final List<Customer> customers;
   final List<Product> products;
+  final List<_NfcProductOption> productOptions;
+}
+
+class _NfcProductOption {
+  const _NfcProductOption({
+    required this.productId,
+    required this.name,
+    required this.pricePerKg,
+  });
+
+  final String productId;
+  final String name;
+  final String pricePerKg;
+
+  factory _NfcProductOption.fromProduct(Product product) {
+    return _NfcProductOption(
+      productId: product.id,
+      name: product.name,
+      pricePerKg: product.pricePerKg,
+    );
+  }
+
+  factory _NfcProductOption.fromSnapshot(NfcProductSnapshot snapshot) {
+    return _NfcProductOption(
+      productId: snapshot.productId,
+      name: snapshot.name,
+      pricePerKg: snapshot.pricePerKg,
+    );
+  }
+
+  NfcProductSnapshot toSnapshot({required String quantityKg}) {
+    return NfcProductSnapshot(
+      productId: productId,
+      name: name,
+      pricePerKg: pricePerKg,
+      quantityKg: formatBrDecimal(quantityKg),
+    );
+  }
 }
 
 class _NfcFormBody extends StatelessWidget {
@@ -344,6 +427,7 @@ class _NfcFormBody extends StatelessWidget {
     required this.dateFormatter,
     required this.customers,
     required this.products,
+    required this.productOptions,
     required this.productToAddId,
     required this.selectedCustomerId,
     required this.selectedProductIds,
@@ -365,6 +449,7 @@ class _NfcFormBody extends StatelessWidget {
   final MaskTextInputFormatter dateFormatter;
   final List<Customer> customers;
   final List<Product> products;
+  final List<_NfcProductOption> productOptions;
   final String? productToAddId;
   final String? selectedCustomerId;
   final Set<String> selectedProductIds;
@@ -543,7 +628,7 @@ class _NfcFormBody extends StatelessWidget {
           const SizedBox(height: 8),
           if (products.isEmpty)
             const Text('Cadastre produtos antes de criar uma NFC.')
-          else ...[
+          else
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -586,65 +671,66 @@ class _NfcFormBody extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            if (selectedProductIds.isEmpty)
-              const Text('Nenhum produto selecionado.')
-            else
-              ...products
-                  .where((product) => selectedProductIds.contains(product.id))
-                  .map((product) {
-                final controller = quantityControllers[product.id];
+          const SizedBox(height: 12),
+          if (selectedProductIds.isEmpty)
+            const Text('Nenhum produto selecionado.')
+          else
+            ...productOptions
+                .where(
+                  (product) => selectedProductIds.contains(product.productId),
+                )
+                .map((product) {
+              final controller = quantityControllers[product.productId];
 
-                if (controller == null) {
-                  return const SizedBox.shrink();
-                }
+              if (controller == null) {
+                return const SizedBox.shrink();
+              }
 
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(product.name),
-                  subtitle: Text('R\$ ${product.pricePerKg}/kg'),
-                  trailing: SizedBox(
-                    width: 148,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: controller,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(
-                                RegExp('[0-9,]'),
-                              ),
-                            ],
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(product.name),
+                subtitle: Text('R\$ ${product.pricePerKg}/kg'),
+                trailing: SizedBox(
+                  width: 148,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: controller,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp('[0-9,]'),
                             ),
-                            decoration: const InputDecoration(
-                              labelText: 'Kg',
-                              suffixText: 'kg',
-                            ),
-                            onChanged: (_) => onQuantityChanged(),
-                            validator: (value) {
-                              final quantity = parseBrDecimal(value ?? '');
-
-                              if (quantity == null || quantity <= 0) {
-                                return 'Valor invalido';
-                              }
-
-                              return null;
-                            },
+                          ],
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
                           ),
+                          decoration: const InputDecoration(
+                            labelText: 'Kg',
+                            suffixText: 'kg',
+                          ),
+                          onChanged: (_) => onQuantityChanged(),
+                          validator: (value) {
+                            final quantity = parseBrDecimal(value ?? '');
+
+                            if (quantity == null || quantity <= 0) {
+                              return 'Valor invalido';
+                            }
+
+                            return null;
+                          },
                         ),
-                        IconButton(
-                          onPressed: () => onRemoveProduct(product.id),
-                          tooltip: 'Remover',
-                          icon: const Icon(Icons.close),
-                        ),
-                      ],
-                    ),
+                      ),
+                      IconButton(
+                        onPressed: () => onRemoveProduct(product.productId),
+                        tooltip: 'Remover',
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
                   ),
-                );
-              }),
-          ],
+                ),
+              );
+            }),
         ],
       ),
     );

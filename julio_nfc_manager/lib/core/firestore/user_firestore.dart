@@ -32,4 +32,8 @@ class UserFirestore {
   CollectionReference<Map<String, dynamic>> get nfcReturns {
     return userDoc.collection('nfcReturns');
   }
+
+  CollectionReference<Map<String, dynamic>> nfcReturnsFor(String nfcId) {
+    return nfc.doc(nfcId).collection('returns');
+  }
 }

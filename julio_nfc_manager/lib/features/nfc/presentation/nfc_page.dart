@@ -5,6 +5,7 @@ import '../../../core/firestore/user_firestore.dart';
 import '../../customers/data/customers_repository.dart';
 import '../../customers/domain/customer.dart';
 import '../../products/data/products_repository.dart';
+import '../../nfc_returns/data/nfc_returns_repository.dart';
 import '../data/nfc_repository.dart';
 import '../domain/nfc_record.dart';
 import 'nfc_details_page.dart';
@@ -24,6 +25,7 @@ class NfcPage extends StatefulWidget {
 
 class _NfcPageState extends State<NfcPage> {
   late final NfcRepository _nfcRepository;
+  late final NfcReturnsRepository _nfcReturnsRepository;
   late final CustomersRepository _customersRepository;
   late final ProductsRepository _productsRepository;
 
@@ -32,6 +34,7 @@ class _NfcPageState extends State<NfcPage> {
     super.initState();
     final store = UserFirestore(uid: widget.user.uid);
     _nfcRepository = NfcRepository(store);
+    _nfcReturnsRepository = NfcReturnsRepository(store);
     _customersRepository = CustomersRepository(store);
     _productsRepository = ProductsRepository(store);
   }
@@ -98,8 +101,9 @@ class _NfcPageState extends State<NfcPage> {
           return NfcDetailsPage(
             nfcId: nfc.id,
             nfcRepository: _nfcRepository,
+            customersRepository: _customersRepository,
+            nfcReturnsRepository: _nfcReturnsRepository,
             onEdit: _openNfcForm,
-            onDelete: _confirmDelete,
           );
         },
       ),
