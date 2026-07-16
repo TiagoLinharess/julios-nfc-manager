@@ -66,14 +66,14 @@ class CustomerDetailsPage extends StatelessWidget {
     if (snapshot.hasError) {
       return const _CustomerDetailsMessage(
         icon: Icons.error_outline,
-        title: 'Nao foi possivel carregar o cliente.',
+        title: 'Não foi possível carregar o cliente.',
       );
     }
 
     if (customer == null) {
       return const _CustomerDetailsMessage(
         icon: Icons.person_off_outlined,
-        title: 'Cliente nao encontrado.',
+        title: 'Cliente não encontrado.',
       );
     }
 

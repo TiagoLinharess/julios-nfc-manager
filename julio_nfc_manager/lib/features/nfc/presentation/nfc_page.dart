@@ -6,6 +6,8 @@ import '../../customers/data/customers_repository.dart';
 import '../../customers/domain/customer.dart';
 import '../../products/data/products_repository.dart';
 import '../../nfc_returns/data/nfc_returns_repository.dart';
+import '../../nfc_returns/domain/nfc_return_record.dart';
+import '../../nfc_returns/domain/nfc_return_summary.dart';
 import '../data/nfc_repository.dart';
 import '../domain/nfc_record.dart';
 import 'nfc_details_page.dart';
@@ -88,7 +90,7 @@ class _NfcPageState extends State<NfcPage> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nao foi possivel excluir a NFC.')),
+        const SnackBar(content: Text('Não foi possível excluir a NFC.')),
       );
       return false;
     }
@@ -130,7 +132,7 @@ class _NfcPageState extends State<NfcPage> {
               if (nfcSnapshot.hasError) {
                 return _EmptyState(
                   icon: Icons.error_outline,
-                  title: 'Nao foi possivel carregar as NFCs.',
+                  title: 'Não foi possível carregar as NFCs.',
                   subtitle: nfcSnapshot.error.toString(),
                 );
               }
@@ -145,7 +147,7 @@ class _NfcPageState extends State<NfcPage> {
                 return const _EmptyState(
                   icon: Icons.nfc_outlined,
                   title: 'Nenhuma NFC cadastrada',
-                  subtitle: 'Toque no botao + para criar a primeira NFC.',
+                  subtitle: 'Toque no botão + para criar a primeira NFC.',
                 );
               }
 
@@ -156,28 +158,49 @@ class _NfcPageState extends State<NfcPage> {
                 itemBuilder: (context, index) {
                   final nfc = records[index];
                   final customerName =
-                      customerNames[nfc.customerId] ?? 'Cliente nao encontrado';
+                      customerNames[nfc.customerId] ?? 'Cliente não encontrado';
 
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6,
-                    ),
-                    leading: CircleAvatar(
-                      backgroundColor: colorScheme.primaryContainer,
-                      child: const Icon(Icons.nfc),
-                    ),
-                    title: _NfcListTitle(
-                      customerName: customerName,
-                      date: nfc.date,
-                    ),
-                    subtitle: _NfcListSubtitle(nfc: nfc),
-                    trailing: IconButton(
-                      onPressed: () => _confirmDelete(nfc),
-                      tooltip: 'Excluir',
-                      icon: const Icon(Icons.delete_outline),
-                    ),
-                    onTap: () => _openNfcDetails(nfc),
+                  return StreamBuilder<List<NfcReturnRecord>>(
+                    stream: _nfcReturnsRepository.watchAll(nfc.id),
+                    builder: (context, returnsSnapshot) {
+                      final returns =
+                          returnsSnapshot.data ?? const <NfcReturnRecord>[];
+                      final status = calculateNfcReturnStatus(
+                        nfc,
+                        returns,
+                      );
+                      final returnPercentage =
+                          calculateNfcReturnPercentage(nfc, returns);
+
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
+                        leading: CircleAvatar(
+                          backgroundColor: colorScheme.primaryContainer,
+                          child: const Icon(Icons.nfc),
+                        ),
+                        title: _NfcListTitle(
+                          customerName: customerName,
+                          date: nfc.date,
+                        ),
+                        subtitle: _NfcListSubtitle(
+                          nfc: nfc,
+                          status: returnsSnapshot.connectionState ==
+                                  ConnectionState.waiting
+                              ? null
+                              : status,
+                          returnPercentage: returnPercentage,
+                        ),
+                        trailing: IconButton(
+                          onPressed: () => _confirmDelete(nfc),
+                          tooltip: 'Excluir',
+                          icon: const Icon(Icons.delete_outline),
+                        ),
+                        onTap: () => _openNfcDetails(nfc),
+                      );
+                    },
                   );
                 },
               );
@@ -254,9 +277,15 @@ class _NfcListTitle extends StatelessWidget {
 }
 
 class _NfcListSubtitle extends StatelessWidget {
-  const _NfcListSubtitle({required this.nfc});
+  const _NfcListSubtitle({
+    required this.nfc,
+    required this.status,
+    required this.returnPercentage,
+  });
 
   final NfcRecord nfc;
+  final NfcReturnStatus? status;
+  final double returnPercentage;
 
   @override
   Widget build(BuildContext context) {
@@ -265,9 +294,21 @@ class _NfcListSubtitle extends StatelessWidget {
     final textStyle = Theme.of(context).textTheme.bodyMedium;
 
     if (isLandscape) {
-      return Text(
-        '${nfc.code} | R\$ ${nfc.totalValue}',
-        style: textStyle,
+      return Wrap(
+        spacing: 10,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(
+            '${nfc.code} | R\$ ${nfc.totalValue}',
+            style: textStyle,
+          ),
+          if (status != null)
+            _NfcListReturnStatusChip(
+              status: status!,
+              percentage: returnPercentage,
+            ),
+        ],
       );
     }
 
@@ -277,7 +318,61 @@ class _NfcListSubtitle extends StatelessWidget {
       children: [
         Text(nfc.code, style: textStyle),
         Text('R\$ ${nfc.totalValue}', style: textStyle),
+        if (status != null) ...[
+          const SizedBox(height: 4),
+          _NfcListReturnStatusChip(
+            status: status!,
+            percentage: returnPercentage,
+          ),
+        ],
       ],
     );
   }
+}
+
+class _NfcListReturnStatusChip extends StatelessWidget {
+  const _NfcListReturnStatusChip({
+    required this.status,
+    required this.percentage,
+  });
+
+  final NfcReturnStatus status;
+  final double percentage;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final (label, color) = switch (status) {
+      NfcReturnStatus.none => ('Sem devolução', colorScheme.outline),
+      NfcReturnStatus.partiallyReturned => (
+          'Parcialmente devolvida',
+          colorScheme.primary,
+        ),
+      NfcReturnStatus.fullyReturned => (
+          'Totalmente devolvida',
+          colorScheme.tertiary,
+        ),
+    };
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        child: Text(
+          '$label · ${_formatNfcListPercentage(percentage)}%',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: color,
+              ),
+        ),
+      ),
+    );
+  }
+}
+
+String _formatNfcListPercentage(double value) {
+  return value.toStringAsFixed(2).replaceAll('.', ',');
 }

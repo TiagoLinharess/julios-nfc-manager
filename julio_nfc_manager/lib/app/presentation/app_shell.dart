@@ -36,7 +36,7 @@ class _AppShellState extends State<AppShell> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nao foi possivel sair.')),
+        const SnackBar(content: Text('Não foi possível sair.')),
       );
     } finally {
       if (mounted) {
@@ -58,13 +58,55 @@ class _AppShellState extends State<AppShell> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: colorScheme.inversePrimary,
-        title: const Text('Julio NFC Manager'),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: colorScheme.surface,
+        surfaceTintColor: Colors.transparent,
+        titleSpacing: 16,
+        shape: Border(
+          bottom: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.55),
+          ),
+        ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Icon(
+                  Icons.nfc,
+                  size: 22,
+                  color: colorScheme.onPrimaryContainer,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'NFC Manager',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ],
+        ),
         actions: [
-          IconButton(
-            onPressed: _isSigningOut ? null : _signOut,
-            tooltip: 'Sair',
-            icon: const Icon(Icons.logout),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: IconButton.filledTonal(
+              onPressed: _isSigningOut ? null : _signOut,
+              tooltip: 'Sair',
+              icon: _isSigningOut
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.logout),
+            ),
           ),
         ],
       ),

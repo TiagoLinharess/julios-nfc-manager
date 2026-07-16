@@ -66,14 +66,14 @@ class ProductDetailsPage extends StatelessWidget {
     if (snapshot.hasError) {
       return const _ProductDetailsMessage(
         icon: Icons.error_outline,
-        title: 'Nao foi possivel carregar o produto.',
+        title: 'Não foi possível carregar o produto.',
       );
     }
 
     if (product == null) {
       return const _ProductDetailsMessage(
         icon: Icons.inventory_2_outlined,
-        title: 'Produto nao encontrado.',
+        title: 'Produto não encontrado.',
       );
     }
 

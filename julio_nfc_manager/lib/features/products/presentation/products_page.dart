@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../../../core/formatting/br_decimal_formatter.dart';
 import '../../../core/firestore/user_firestore.dart';
+import '../../../core/presentation/responsive_form_dialog.dart';
 import '../data/products_repository.dart';
 import '../domain/product.dart';
 import 'product_details_page.dart';
@@ -59,7 +60,7 @@ class _ProductsPageState extends State<ProductsPage> {
         return;
       }
 
-      _showError('Nao foi possivel salvar o produto.');
+      _showError('Não foi possível salvar o produto.');
     }
   }
 
@@ -96,7 +97,7 @@ class _ProductsPageState extends State<ProductsPage> {
         return false;
       }
 
-      _showError('Nao foi possivel excluir o produto.');
+      _showError('Não foi possível excluir o produto.');
       return false;
     }
   }
@@ -137,7 +138,7 @@ class _ProductsPageState extends State<ProductsPage> {
           if (snapshot.hasError) {
             return _EmptyState(
               icon: Icons.error_outline,
-              title: 'Nao foi possivel carregar os produtos.',
+              title: 'Não foi possível carregar os produtos.',
               subtitle: snapshot.error.toString(),
             );
           }
@@ -148,7 +149,7 @@ class _ProductsPageState extends State<ProductsPage> {
             return const _EmptyState(
               icon: Icons.inventory_2_outlined,
               title: 'Nenhum produto cadastrado',
-              subtitle: 'Toque no botao + para criar o primeiro produto.',
+              subtitle: 'Toque no botão + para criar o primeiro produto.',
             );
           }
 
@@ -263,7 +264,7 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
   Widget build(BuildContext context) {
     final isEditing = widget.product != null;
 
-    return AlertDialog(
+    return ResponsiveFormDialog(
       title: Text(isEditing ? 'Editar produto' : 'Novo produto'),
       content: Form(
         key: _formKey,
@@ -310,7 +311,7 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
                 }
 
                 if (price == null || price <= 0) {
-                  return 'Informe um valor valido.';
+                  return 'Informe um valor válido.';
                 }
 
                 return null;

@@ -6,6 +6,7 @@ import '../../customers/domain/customer.dart';
 import '../../nfc_returns/data/nfc_returns_repository.dart';
 import '../../nfc_returns/domain/nfc_return_product_snapshot.dart';
 import '../../nfc_returns/domain/nfc_return_record.dart';
+import '../../nfc_returns/domain/nfc_return_summary.dart';
 import '../../nfc_returns/presentation/nfc_return_details_page.dart';
 import '../../nfc_returns/presentation/nfc_return_form_page.dart';
 import '../data/nfc_repository.dart';
@@ -118,14 +119,14 @@ class NfcDetailsPage extends StatelessWidget {
     if (snapshot.hasError) {
       return const _NfcDetailsMessage(
         icon: Icons.error_outline,
-        title: 'Nao foi possivel carregar a NFC.',
+        title: 'Não foi possível carregar a NFC.',
       );
     }
 
     if (nfc == null) {
       return const _NfcDetailsMessage(
         icon: Icons.nfc_outlined,
-        title: 'NFC nao encontrada.',
+        title: 'NFC não encontrada.',
       );
     }
 
@@ -133,7 +134,7 @@ class NfcDetailsPage extends StatelessWidget {
       stream: customersRepository.watchById(nfc.customerId),
       builder: (context, customerSnapshot) {
         final customerName =
-            customerSnapshot.data?.name ?? 'Cliente nao encontrado';
+            customerSnapshot.data?.name ?? 'Cliente não encontrado';
 
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -281,7 +282,7 @@ class _NfcReturnsSection extends StatelessWidget {
   bool _hasAvailableQuantity(List<NfcReturnRecord> returns) {
     for (final product in nfc.products) {
       final originalQuantity = parseBrDecimal(product.quantityKg) ?? 0;
-      final returnedQuantity = _returnedQuantityFor(
+      final returnedQuantity = calculateReturnedQuantity(
         product.productId,
         returns,
       );
@@ -294,25 +295,6 @@ class _NfcReturnsSection extends StatelessWidget {
     return false;
   }
 
-  double _returnedQuantityFor(
-    String productId,
-    List<NfcReturnRecord> returns,
-  ) {
-    var total = 0.0;
-
-    for (final nfcReturn in returns) {
-      for (final product in nfcReturn.products) {
-        if (product.productId != productId) {
-          continue;
-        }
-
-        total += parseBrDecimal(product.quantityKg) ?? 0;
-      }
-    }
-
-    return total;
-  }
-
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<NfcReturnRecord>>(
@@ -320,6 +302,7 @@ class _NfcReturnsSection extends StatelessWidget {
       builder: (context, snapshot) {
         final returns = snapshot.data ?? const <NfcReturnRecord>[];
         final hasAvailableQuantity = _hasAvailableQuantity(returns);
+        final status = calculateNfcReturnStatus(nfc, returns);
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -348,34 +331,99 @@ class _NfcReturnsSection extends StatelessWidget {
               const Center(child: CircularProgressIndicator())
             else if (snapshot.hasError)
               const Text('Não foi possível carregar as devoluções.')
-            else if (returns.isEmpty)
-              const Text('Nenhuma devolução cadastrada.')
             else ...[
-              _NfcReturnsOverview(
-                nfc: nfc,
-                returns: returns,
+              _NfcReturnStatusBanner(
+                status: status,
               ),
-              const SizedBox(height: 8),
-              ...List.generate(returns.length, (index) {
-                final nfcReturn = returns[index];
-
-                return _NfcReturnCard(
+              if (status == NfcReturnStatus.fullyReturned) ...[
+                const SizedBox(height: 8),
+                const Text('Todos os produtos desta NFC já foram devolvidos.'),
+              ],
+              if (returns.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text('Nenhuma devolução cadastrada.'),
+                )
+              else ...[
+                const SizedBox(height: 12),
+                _NfcReturnsOverview(
                   nfc: nfc,
-                  nfcReturn: nfcReturn,
-                  onDelete: () async {
-                    await _deleteReturn(context, nfcReturn);
-                  },
-                  onTap: () => _openReturnDetails(
-                    context,
-                    nfcReturn,
-                    returns,
-                  ),
-                );
-              }),
+                  returns: returns,
+                ),
+                const SizedBox(height: 8),
+                ...List.generate(returns.length, (index) {
+                  final nfcReturn = returns[index];
+
+                  return _NfcReturnCard(
+                    nfc: nfc,
+                    nfcReturn: nfcReturn,
+                    onDelete: () async {
+                      await _deleteReturn(context, nfcReturn);
+                    },
+                    onTap: () => _openReturnDetails(
+                      context,
+                      nfcReturn,
+                      returns,
+                    ),
+                  );
+                }),
+              ],
             ],
           ],
         );
       },
+    );
+  }
+}
+
+class _NfcReturnStatusBanner extends StatelessWidget {
+  const _NfcReturnStatusBanner({required this.status});
+
+  final NfcReturnStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final (label, icon, color) = switch (status) {
+      NfcReturnStatus.none => (
+          'Sem devolução',
+          Icons.info_outline,
+          colorScheme.outline,
+        ),
+      NfcReturnStatus.partiallyReturned => (
+          'Parcialmente devolvida',
+          Icons.change_circle_outlined,
+          colorScheme.primary,
+        ),
+      NfcReturnStatus.fullyReturned => (
+          'Totalmente devolvida',
+          Icons.check_circle_outline,
+          colorScheme.tertiary,
+        ),
+    };
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.32)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: color,
+                  ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -392,7 +440,7 @@ class _NfcReturnsOverview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final totalReturned = _calculateReturnsTotalValue(returns);
+    final totalReturned = calculateReturnsTotalValue(returns);
     final nfcTotal = parseBrDecimal(nfc.totalValue) ?? 0;
     final percentage = nfcTotal <= 0 ? 0.0 : (totalReturned / nfcTotal) * 100;
     final progress = nfcTotal <= 0
@@ -440,7 +488,7 @@ class _NfcReturnsOverview extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           ...nfc.products.map((product) {
-            final returnedQuantity = _calculateReturnedQuantity(
+            final returnedQuantity = calculateReturnedQuantity(
               product.productId,
               returns,
             );
@@ -448,7 +496,7 @@ class _NfcReturnsOverview extends StatelessWidget {
             final productPercentage = productQuantity <= 0
                 ? 0.0
                 : (returnedQuantity / productQuantity) * 100;
-            final productReturnedValue = _calculateReturnedValueForProduct(
+            final productReturnedValue = calculateReturnedValueForProduct(
               product.productId,
               returns,
             );
@@ -601,7 +649,7 @@ class _NfcReturnCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final percentage = _calculateReturnPercentage(nfc, nfcReturn);
+    final percentage = calculateSingleReturnPercentage(nfc, nfcReturn);
 
     return Padding(
       padding: const EdgeInsets.only(top: 10),
@@ -694,12 +742,12 @@ class _NfcReturnCard extends StatelessWidget {
                               product.productId,
                             );
                             final productPercentage =
-                                _calculateProductReturnPercentage(
+                                calculateProductReturnPercentage(
                               originalProduct,
                               product,
                             );
                             final subtotal =
-                                _calculateReturnProductSubtotal(product);
+                                calculateReturnProductSubtotal(product);
 
                             return _NfcReturnProductSummary(
                               product: product,
@@ -864,75 +912,6 @@ String _formatCurrency(double value) {
   return value.toStringAsFixed(2).replaceAll('.', ',');
 }
 
-double _calculateReturnsTotalValue(List<NfcReturnRecord> returns) {
-  var total = 0.0;
-
-  for (final nfcReturn in returns) {
-    total += parseBrDecimal(nfcReturn.totalValue) ?? 0;
-  }
-
-  return total;
-}
-
-double _calculateReturnedQuantity(
-  String productId,
-  List<NfcReturnRecord> returns,
-) {
-  var total = 0.0;
-
-  for (final nfcReturn in returns) {
-    for (final product in nfcReturn.products) {
-      if (product.productId != productId) {
-        continue;
-      }
-
-      total += parseBrDecimal(product.quantityKg) ?? 0;
-    }
-  }
-
-  return total;
-}
-
-double _calculateReturnedValueForProduct(
-  String productId,
-  List<NfcReturnRecord> returns,
-) {
-  var total = 0.0;
-
-  for (final nfcReturn in returns) {
-    for (final product in nfcReturn.products) {
-      if (product.productId != productId) {
-        continue;
-      }
-
-      final price = parseBrDecimal(product.pricePerKg);
-      final quantity = parseBrDecimal(product.quantityKg);
-
-      if (price == null || quantity == null) {
-        continue;
-      }
-
-      total += price * quantity;
-    }
-  }
-
-  return total;
-}
-
-double _calculateReturnPercentage(
-  NfcRecord nfc,
-  NfcReturnRecord nfcReturn,
-) {
-  final nfcTotal = parseBrDecimal(nfc.totalValue) ?? 0;
-  final returnTotal = parseBrDecimal(nfcReturn.totalValue) ?? 0;
-
-  if (nfcTotal <= 0) {
-    return 0;
-  }
-
-  return (returnTotal / nfcTotal) * 100;
-}
-
 NfcProductSnapshot? _findNfcProduct(NfcRecord nfc, String productId) {
   for (final product in nfc.products) {
     if (product.productId == productId) {
@@ -941,31 +920,6 @@ NfcProductSnapshot? _findNfcProduct(NfcRecord nfc, String productId) {
   }
 
   return null;
-}
-
-double _calculateProductReturnPercentage(
-  NfcProductSnapshot? originalProduct,
-  NfcReturnProductSnapshot returnedProduct,
-) {
-  final originalQuantity = parseBrDecimal(originalProduct?.quantityKg ?? '') ?? 0;
-  final returnedQuantity = parseBrDecimal(returnedProduct.quantityKg) ?? 0;
-
-  if (originalQuantity <= 0) {
-    return 0;
-  }
-
-  return (returnedQuantity / originalQuantity) * 100;
-}
-
-String? _calculateReturnProductSubtotal(NfcReturnProductSnapshot product) {
-  final price = parseBrDecimal(product.pricePerKg);
-  final quantity = parseBrDecimal(product.quantityKg);
-
-  if (price == null || quantity == null) {
-    return null;
-  }
-
-  return (price * quantity).toStringAsFixed(2).replaceAll('.', ',');
 }
 
 String? _calculateSubtotal(NfcProductSnapshot product) {

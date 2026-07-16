@@ -282,7 +282,7 @@ class _NfcReturnFormPageState extends State<NfcReturnFormPage> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Informe o codigo.';
+                  return 'Informe o código.';
                 }
 
                 return null;
@@ -361,7 +361,7 @@ class _NfcReturnFormPageState extends State<NfcReturnFormPage> {
                       }
 
                       if (totalValue == null || totalValue <= 0) {
-                        return 'Informe um valor valido.';
+                        return 'Informe um valor válido.';
                       }
 
                       return null;
@@ -410,7 +410,7 @@ class _NfcReturnFormPageState extends State<NfcReturnFormPage> {
             ),
             const SizedBox(height: 8),
             if (widget.nfc.products.isEmpty)
-              const Text('Esta NFC nao possui produtos.')
+              const Text('Esta NFC não possui produtos.')
             else
               ...widget.nfc.products.map((product) {
                 final controller = _quantityControllers[product.productId];

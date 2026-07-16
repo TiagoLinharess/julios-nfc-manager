@@ -116,7 +116,7 @@ class _NfcFormPageState extends State<NfcFormPage> {
         .toList();
 
     if (snapshots.isEmpty) {
-      _showError('Selecione pelo menos um produto disponivel.');
+      _showError('Selecione pelo menos um produto disponível.');
       return;
     }
 
@@ -165,7 +165,7 @@ class _NfcFormPageState extends State<NfcFormPage> {
         return;
       }
 
-      _showError('Nao foi possivel salvar a NFC.');
+      _showError('Não foi possível salvar a NFC.');
     } finally {
       if (mounted) {
         setState(() {
@@ -478,12 +478,12 @@ class _NfcFormBody extends StatelessWidget {
             controller: codeController,
             textInputAction: TextInputAction.next,
             decoration: const InputDecoration(
-              labelText: 'Codigo',
+              labelText: 'Código',
               prefixIcon: Icon(Icons.confirmation_number_outlined),
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Informe o codigo.';
+                return 'Informe o código.';
               }
 
               return null;
@@ -560,7 +560,7 @@ class _NfcFormBody extends StatelessWidget {
                     }
 
                     if (totalValue == null || totalValue <= 0) {
-                      return 'Informe um valor valido.';
+                      return 'Informe um valor válido.';
                     }
 
                     return null;
@@ -714,7 +714,7 @@ class _NfcFormBody extends StatelessWidget {
                             final quantity = parseBrDecimal(value ?? '');
 
                             if (quantity == null || quantity <= 0) {
-                              return 'Valor invalido';
+                              return 'Valor inválido';
                             }
 
                             return null;

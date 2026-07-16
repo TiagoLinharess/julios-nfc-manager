@@ -122,7 +122,7 @@ class _LoginPage extends StatelessWidget {
                   Icon(Icons.nfc, size: 64, color: colorScheme.primary),
                   const SizedBox(height: 24),
                   Text(
-                    'Julio NFC Manager',
+                    'NFC Manager',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),

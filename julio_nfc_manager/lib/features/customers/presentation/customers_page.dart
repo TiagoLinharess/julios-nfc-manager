@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
 import '../../../core/firestore/user_firestore.dart';
+import '../../../core/presentation/responsive_form_dialog.dart';
 import '../../../core/validation/cnpj_validator.dart';
 import '../data/customers_repository.dart';
 import '../domain/customer.dart';
@@ -65,7 +66,7 @@ class _CustomersPageState extends State<CustomersPage> {
         return;
       }
 
-      _showError('Nao foi possivel salvar o cliente.');
+      _showError('Não foi possível salvar o cliente.');
     }
   }
 
@@ -102,7 +103,7 @@ class _CustomersPageState extends State<CustomersPage> {
         return false;
       }
 
-      _showError('Nao foi possivel excluir o cliente.');
+      _showError('Não foi possível excluir o cliente.');
       return false;
     }
   }
@@ -143,7 +144,7 @@ class _CustomersPageState extends State<CustomersPage> {
           if (snapshot.hasError) {
             return _EmptyState(
               icon: Icons.error_outline,
-              title: 'Nao foi possivel carregar os clientes.',
+              title: 'Não foi possível carregar os clientes.',
               subtitle: snapshot.error.toString(),
             );
           }
@@ -154,7 +155,7 @@ class _CustomersPageState extends State<CustomersPage> {
             return const _EmptyState(
               icon: Icons.people_outline,
               title: 'Nenhum cliente cadastrado',
-              subtitle: 'Toque no botao + para criar o primeiro cliente.',
+              subtitle: 'Toque no botão + para criar o primeiro cliente.',
             );
           }
 
@@ -274,7 +275,7 @@ class _CustomerFormDialogState extends State<_CustomerFormDialog> {
   Widget build(BuildContext context) {
     final isEditing = widget.customer != null;
 
-    return AlertDialog(
+    return ResponsiveFormDialog(
       title: Text(isEditing ? 'Editar cliente' : 'Novo cliente'),
       content: Form(
         key: _formKey,
@@ -316,7 +317,7 @@ class _CustomerFormDialogState extends State<_CustomerFormDialog> {
                 }
 
                 if (!isValidCnpj(value)) {
-                  return 'Informe um CNPJ valido.';
+                  return 'Informe um CNPJ válido.';
                 }
 
                 return null;
