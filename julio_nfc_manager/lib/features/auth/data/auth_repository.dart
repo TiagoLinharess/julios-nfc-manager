@@ -2,6 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+const _googleSignInServerClientId =
+    '441378487264-m3m1lu0et9rq6n2hd5rmubiv4rpi920o.apps.googleusercontent.com';
+
 class AuthRepository {
   AuthRepository({
     FirebaseAuth? firebaseAuth,
@@ -26,7 +29,7 @@ class AuthRepository {
       return;
     }
 
-    await googleSignIn.initialize();
+    await googleSignIn.initialize(serverClientId: _googleSignInServerClientId);
     _googleSignInInitialized = true;
   }
 
@@ -67,9 +70,6 @@ class AuthRepository {
 
   Future<void> signOut() async {
     await _initializeGoogleSignIn();
-    await Future.wait([
-      firebaseAuth.signOut(),
-      googleSignIn.signOut(),
-    ]);
+    await Future.wait([firebaseAuth.signOut(), googleSignIn.signOut()]);
   }
 }
