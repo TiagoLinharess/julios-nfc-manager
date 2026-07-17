@@ -1,23 +1,21 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
 import '../../../core/firestore/user_firestore.dart';
+import '../../../core/presentation/app_refresh_indicator.dart';
 import '../../customers/data/customers_repository.dart';
 import '../../customers/domain/customer.dart';
 import '../../products/data/products_repository.dart';
 import '../../nfc_returns/data/nfc_returns_repository.dart';
-import '../../nfc_returns/domain/nfc_return_record.dart';
-import '../../nfc_returns/domain/nfc_return_summary.dart';
 import '../data/nfc_repository.dart';
 import '../domain/nfc_record.dart';
 import 'nfc_details_page.dart';
 import 'nfc_form_page.dart';
+import 'widgets/nfc_list_tile.dart';
 
 class NfcPage extends StatefulWidget {
-  const NfcPage({
-    required this.user,
-    super.key,
-  });
+  const NfcPage({required this.user, super.key});
 
   final User user;
 
@@ -31,6 +29,10 @@ class _NfcPageState extends State<NfcPage> {
   late final CustomersRepository _customersRepository;
   late final ProductsRepository _productsRepository;
 
+  String? _customerFilterId;
+  String _dateFilter = '';
+  int _filterResetVersion = 0;
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +41,14 @@ class _NfcPageState extends State<NfcPage> {
     _nfcReturnsRepository = NfcReturnsRepository(store);
     _customersRepository = CustomersRepository(store);
     _productsRepository = ProductsRepository(store);
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _customerFilterId = null;
+      _dateFilter = '';
+      _filterResetVersion++;
+    });
   }
 
   Future<void> _openNfcForm([NfcRecord? nfc]) async {
@@ -121,8 +131,6 @@ class _NfcPageState extends State<NfcPage> {
           return StreamBuilder<List<NfcRecord>>(
             stream: _nfcRepository.watchAll(),
             builder: (context, nfcSnapshot) {
-              final colorScheme = Theme.of(context).colorScheme;
-
               if (customersSnapshot.connectionState ==
                       ConnectionState.waiting ||
                   nfcSnapshot.connectionState == ConnectionState.waiting) {
@@ -142,67 +150,84 @@ class _NfcPageState extends State<NfcPage> {
                 for (final customer in customers) customer.id: customer.name,
               };
               final records = nfcSnapshot.data ?? const <NfcRecord>[];
+              final activeCustomerFilter =
+                  customers.any((customer) => customer.id == _customerFilterId)
+                  ? _customerFilterId
+                  : null;
+              final dateFilter = _dateFilter;
+              final shouldFilterByDate = dateFilter.length == 10;
 
               if (records.isEmpty) {
                 return const _EmptyState(
-                  icon: Icons.nfc_outlined,
+                  icon: Icons.receipt_long_outlined,
                   title: 'Nenhuma NFC cadastrada',
                   subtitle: 'Toque no botão + para criar a primeira NFC.',
                 );
               }
 
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-                itemCount: records.length,
-                separatorBuilder: (context, index) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final nfc = records[index];
-                  final customerName =
-                      customerNames[nfc.customerId] ?? 'Cliente não encontrado';
+              final filteredRecords = records.where((nfc) {
+                if (activeCustomerFilter != null &&
+                    nfc.customerId != activeCustomerFilter) {
+                  return false;
+                }
 
-                  return StreamBuilder<List<NfcReturnRecord>>(
-                    stream: _nfcReturnsRepository.watchAll(nfc.id),
-                    builder: (context, returnsSnapshot) {
-                      final returns =
-                          returnsSnapshot.data ?? const <NfcReturnRecord>[];
-                      final status = calculateNfcReturnStatus(
-                        nfc,
-                        returns,
-                      );
-                      final returnPercentage =
-                          calculateNfcReturnPercentage(nfc, returns);
+                if (shouldFilterByDate && nfc.date != dateFilter) {
+                  return false;
+                }
 
-                      return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 6,
-                        ),
-                        leading: CircleAvatar(
-                          backgroundColor: colorScheme.primaryContainer,
-                          child: const Icon(Icons.nfc),
-                        ),
-                        title: _NfcListTitle(
-                          customerName: customerName,
-                          date: nfc.date,
-                        ),
-                        subtitle: _NfcListSubtitle(
-                          nfc: nfc,
-                          status: returnsSnapshot.connectionState ==
-                                  ConnectionState.waiting
-                              ? null
-                              : status,
-                          returnPercentage: returnPercentage,
-                        ),
-                        trailing: IconButton(
-                          onPressed: () => _confirmDelete(nfc),
-                          tooltip: 'Excluir',
-                          icon: const Icon(Icons.delete_outline),
-                        ),
-                        onTap: () => _openNfcDetails(nfc),
-                      );
-                    },
-                  );
-                },
+                return true;
+              }).toList();
+              final hasActiveFilters =
+                  activeCustomerFilter != null || dateFilter.isNotEmpty;
+
+              return AppRefreshIndicator(
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+                  children: [
+                    _NfcFilters(
+                      customers: customers,
+                      selectedCustomerId: activeCustomerFilter,
+                      activeDateFilter: dateFilter,
+                      resetVersion: _filterResetVersion,
+                      hasActiveFilters: hasActiveFilters,
+                      onCustomerChanged: (customerId) {
+                        setState(() {
+                          _customerFilterId = customerId;
+                        });
+                      },
+                      onDateFilterChanged: (date) {
+                        setState(() {
+                          _dateFilter = date;
+                        });
+                      },
+                      onClear: _clearFilters,
+                    ),
+                    const SizedBox(height: 8),
+                    if (filteredRecords.isEmpty)
+                      const _FilteredEmptyState()
+                    else
+                      ...List.generate(filteredRecords.length, (index) {
+                        final nfc = filteredRecords[index];
+                        final customerName =
+                            customerNames[nfc.customerId] ??
+                            'Cliente não encontrado';
+
+                        return Column(
+                          children: [
+                            if (index > 0) const Divider(height: 1),
+                            NfcListTile(
+                              nfc: nfc,
+                              customerName: customerName,
+                              returnsRepository: _nfcReturnsRepository,
+                              onTap: () => _openNfcDetails(nfc),
+                              onDelete: () => _confirmDelete(nfc),
+                            ),
+                          ],
+                        );
+                      }),
+                  ],
+                ),
               );
             },
           );
@@ -212,6 +237,184 @@ class _NfcPageState extends State<NfcPage> {
         onPressed: () => _openNfcForm(),
         icon: const Icon(Icons.add),
         label: const Text('NFC'),
+      ),
+    );
+  }
+}
+
+class _NfcFilters extends StatefulWidget {
+  const _NfcFilters({
+    required this.customers,
+    required this.selectedCustomerId,
+    required this.activeDateFilter,
+    required this.resetVersion,
+    required this.hasActiveFilters,
+    required this.onCustomerChanged,
+    required this.onDateFilterChanged,
+    required this.onClear,
+  });
+
+  final List<Customer> customers;
+  final String? selectedCustomerId;
+  final String activeDateFilter;
+  final int resetVersion;
+  final bool hasActiveFilters;
+  final ValueChanged<String?> onCustomerChanged;
+  final ValueChanged<String> onDateFilterChanged;
+  final VoidCallback onClear;
+
+  @override
+  State<_NfcFilters> createState() => _NfcFiltersState();
+}
+
+class _NfcFiltersState extends State<_NfcFilters> {
+  late final TextEditingController _dateController;
+  final _dateFormatter = MaskTextInputFormatter(
+    mask: '##/##/####',
+    filter: {'#': RegExp('[0-9]')},
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _dateController = TextEditingController(text: widget.activeDateFilter);
+  }
+
+  @override
+  void dispose() {
+    _dateController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _NfcFilters oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.resetVersion != widget.resetVersion) {
+      _dateController.clear();
+      _dateFormatter.clear();
+      return;
+    }
+
+    if (oldWidget.activeDateFilter != widget.activeDateFilter &&
+        widget.activeDateFilter.isNotEmpty &&
+        _dateController.text != widget.activeDateFilter) {
+      _dateController.text = widget.activeDateFilter;
+      _dateFormatter.formatEditUpdate(
+        TextEditingValue.empty,
+        TextEditingValue(text: widget.activeDateFilter),
+      );
+    }
+  }
+
+  void _clearDate() {
+    setState(() {
+      _dateController.clear();
+      _dateFormatter.clear();
+    });
+    widget.onDateFilterChanged('');
+  }
+
+  void _handleDateChanged(String value) {
+    setState(() {});
+
+    if (value.isEmpty || value.length == 10) {
+      widget.onDateFilterChanged(value);
+    } else if (widget.activeDateFilter.isNotEmpty) {
+      widget.onDateFilterChanged('');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fields = [
+      DropdownButtonFormField<String>(
+        initialValue: widget.selectedCustomerId,
+        items: [
+          const DropdownMenuItem<String>(
+            value: null,
+            child: Text('Todos os clientes'),
+          ),
+          ...widget.customers.map((customer) {
+            return DropdownMenuItem<String>(
+              value: customer.id,
+              child: Text(customer.name),
+            );
+          }),
+        ],
+        decoration: const InputDecoration(
+          labelText: 'Cliente',
+          prefixIcon: Icon(Icons.person_outline),
+        ),
+        onChanged: widget.onCustomerChanged,
+      ),
+      TextField(
+        controller: _dateController,
+        inputFormatters: [_dateFormatter],
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          labelText: 'Data',
+          hintText: 'dd/mm/aaaa',
+          prefixIcon: const Icon(Icons.event_outlined),
+          suffixIcon: _dateController.text.isEmpty
+              ? null
+              : IconButton(
+                  onPressed: _clearDate,
+                  tooltip: 'Limpar data',
+                  icon: const Icon(Icons.close),
+                ),
+        ),
+        onChanged: _handleDateChanged,
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth >= 620) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: fields[0]),
+                  const SizedBox(width: 12),
+                  SizedBox(width: 220, child: fields[1]),
+                ],
+              );
+            }
+
+            return Column(
+              children: [fields[0], const SizedBox(height: 12), fields[1]],
+            );
+          },
+        ),
+        if (widget.hasActiveFilters) ...[
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: widget.onClear,
+            icon: const Icon(Icons.filter_alt_off_outlined),
+            label: const Text('Limpar filtros'),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _FilteredEmptyState extends StatelessWidget {
+  const _FilteredEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      child: Center(
+        child: Text(
+          'Nenhuma NFC encontrada com estes filtros.',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
       ),
     );
   }
@@ -259,120 +462,4 @@ class _EmptyState extends StatelessWidget {
       ),
     );
   }
-}
-
-class _NfcListTitle extends StatelessWidget {
-  const _NfcListTitle({
-    required this.customerName,
-    required this.date,
-  });
-
-  final String customerName;
-  final String date;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text('$customerName | $date');
-  }
-}
-
-class _NfcListSubtitle extends StatelessWidget {
-  const _NfcListSubtitle({
-    required this.nfc,
-    required this.status,
-    required this.returnPercentage,
-  });
-
-  final NfcRecord nfc;
-  final NfcReturnStatus? status;
-  final double returnPercentage;
-
-  @override
-  Widget build(BuildContext context) {
-    final isLandscape =
-        MediaQuery.orientationOf(context) == Orientation.landscape;
-    final textStyle = Theme.of(context).textTheme.bodyMedium;
-
-    if (isLandscape) {
-      return Wrap(
-        spacing: 10,
-        runSpacing: 4,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Text(
-            '${nfc.code} | R\$ ${nfc.totalValue}',
-            style: textStyle,
-          ),
-          if (status != null)
-            _NfcListReturnStatusChip(
-              status: status!,
-              percentage: returnPercentage,
-            ),
-        ],
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(nfc.code, style: textStyle),
-        Text('R\$ ${nfc.totalValue}', style: textStyle),
-        if (status != null) ...[
-          const SizedBox(height: 4),
-          _NfcListReturnStatusChip(
-            status: status!,
-            percentage: returnPercentage,
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _NfcListReturnStatusChip extends StatelessWidget {
-  const _NfcListReturnStatusChip({
-    required this.status,
-    required this.percentage,
-  });
-
-  final NfcReturnStatus status;
-  final double percentage;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final (label, color) = switch (status) {
-      NfcReturnStatus.none => ('Sem devolução', colorScheme.outline),
-      NfcReturnStatus.partiallyReturned => (
-          'Parcialmente devolvida',
-          colorScheme.primary,
-        ),
-      NfcReturnStatus.fullyReturned => (
-          'Totalmente devolvida',
-          colorScheme.tertiary,
-        ),
-    };
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.28)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        child: Text(
-          '$label · ${_formatNfcListPercentage(percentage)}%',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: color,
-              ),
-        ),
-      ),
-    );
-  }
-}
-
-String _formatNfcListPercentage(double value) {
-  return value.toStringAsFixed(2).replaceAll('.', ',');
 }

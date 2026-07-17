@@ -50,8 +50,8 @@ class _NfcReturnFormPageState extends State<NfcReturnFormPage> {
     super.initState();
     final nfcReturn = widget.nfcReturn;
     final returnedQuantities = {
-      for (final product in nfcReturn?.products ??
-          const <NfcReturnProductSnapshot>[])
+      for (final product
+          in nfcReturn?.products ?? const <NfcReturnProductSnapshot>[])
         product.productId: product.quantityKg,
     };
 
@@ -105,10 +105,7 @@ class _NfcReturnFormPageState extends State<NfcReturnFormPage> {
       }
 
       products.add(
-        NfcReturnProductSnapshot.fromNfcProduct(
-          product,
-          quantityKg: quantity,
-        ),
+        NfcReturnProductSnapshot.fromNfcProduct(product, quantityKg: quantity),
       );
     }
 
@@ -162,9 +159,9 @@ class _NfcReturnFormPageState extends State<NfcReturnFormPage> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _recalculateTotalValue() {
@@ -235,9 +232,30 @@ class _NfcReturnFormPageState extends State<NfcReturnFormPage> {
     return total;
   }
 
+  double _returnedTotalExcludingCurrent() {
+    var total = 0.0;
+
+    for (final nfcReturn in widget.returns) {
+      if (nfcReturn.id == widget.nfcReturn?.id) {
+        continue;
+      }
+
+      total += parseBrDecimal(nfcReturn.totalValue) ?? 0;
+    }
+
+    return total;
+  }
+
+  double _availableTotalValue() {
+    final nfcTotal = parseBrDecimal(widget.nfc.totalValue) ?? 0;
+    return nfcTotal - _returnedTotalExcludingCurrent();
+  }
+
   double _availableQuantityFor(NfcProductSnapshot product) {
     final originalQuantity = parseBrDecimal(product.quantityKg) ?? 0;
-    return originalQuantity - _returnedQuantityFor(product.productId);
+    final available =
+        originalQuantity - _returnedQuantityFor(product.productId);
+    return available < 0 ? 0 : available;
   }
 
   @override
@@ -343,9 +361,7 @@ class _NfcReturnFormPageState extends State<NfcReturnFormPage> {
                           : null,
                       prefixIcon: Icon(
                         Icons.paid_outlined,
-                        color: !_isCustomTotalValue
-                            ? disabledValueColor
-                            : null,
+                        color: !_isCustomTotalValue ? disabledValueColor : null,
                       ),
                       prefixText: 'R\$ ',
                       prefixStyle: !_isCustomTotalValue
@@ -362,6 +378,15 @@ class _NfcReturnFormPageState extends State<NfcReturnFormPage> {
 
                       if (totalValue == null || totalValue <= 0) {
                         return 'Informe um valor válido.';
+                      }
+
+                      final availableTotal = _availableTotalValue();
+
+                      if (totalValue - availableTotal > 0.01) {
+                        final availableText = availableTotal
+                            .toStringAsFixed(2)
+                            .replaceAll('.', ',');
+                        return 'Máx R\$ $availableText';
                       }
 
                       return null;
@@ -391,10 +416,7 @@ class _NfcReturnFormPageState extends State<NfcReturnFormPage> {
                             },
                           ),
                           const Flexible(
-                            child: Text(
-                              'Editar valor',
-                              maxLines: 2,
-                            ),
+                            child: Text('Editar valor', maxLines: 2),
                           ),
                         ],
                       ),
@@ -415,8 +437,9 @@ class _NfcReturnFormPageState extends State<NfcReturnFormPage> {
               ...widget.nfc.products.map((product) {
                 final controller = _quantityControllers[product.productId];
                 final available = _availableQuantityFor(product);
-                final availableText =
-                    available.toStringAsFixed(2).replaceAll('.', ',');
+                final availableText = available
+                    .toStringAsFixed(2)
+                    .replaceAll('.', ',');
 
                 if (controller == null) {
                   return const SizedBox.shrink();

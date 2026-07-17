@@ -6,11 +6,7 @@ import '../../features/nfc/presentation/nfc_page.dart';
 import '../../features/products/presentation/products_page.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({
-    required this.user,
-    required this.onSignOut,
-    super.key,
-  });
+  const AppShell({required this.user, required this.onSignOut, super.key});
 
   final User user;
   final Future<void> Function() onSignOut;
@@ -35,9 +31,9 @@ class _AppShellState extends State<AppShell> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Não foi possível sair.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Não foi possível sair.')));
     } finally {
       if (mounted) {
         setState(() {
@@ -71,26 +67,21 @@ class _AppShellState extends State<AppShell> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Icon(
-                  Icons.nfc,
-                  size: 22,
-                  color: colorScheme.onPrimaryContainer,
-                ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                'assets/branding/app_icon_1024.png',
+                width: 38,
+                height: 38,
+                fit: BoxFit.cover,
               ),
             ),
             const SizedBox(width: 12),
             Text(
               'NFC Manager',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -110,10 +101,7 @@ class _AppShellState extends State<AppShell> {
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: pages,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: pages),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
@@ -123,8 +111,8 @@ class _AppShellState extends State<AppShell> {
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.nfc_outlined),
-            selectedIcon: Icon(Icons.nfc),
+            icon: Icon(Icons.receipt_long_outlined),
+            selectedIcon: Icon(Icons.receipt_long),
             label: 'NFC',
           ),
           NavigationDestination(

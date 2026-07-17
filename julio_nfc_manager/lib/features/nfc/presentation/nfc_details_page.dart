@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/formatting/br_decimal_formatter.dart';
+import '../../../core/presentation/app_refresh_indicator.dart';
 import '../../customers/data/customers_repository.dart';
 import '../../customers/domain/customer.dart';
 import '../../nfc_returns/data/nfc_returns_repository.dart';
@@ -29,10 +30,7 @@ class NfcDetailsPage extends StatelessWidget {
   final NfcReturnsRepository nfcReturnsRepository;
   final Future<void> Function(NfcRecord nfc) onEdit;
 
-  Future<void> _deleteNfc(
-    BuildContext context,
-    NfcRecord nfc,
-  ) async {
+  Future<void> _deleteNfc(BuildContext context, NfcRecord nfc) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -125,7 +123,7 @@ class NfcDetailsPage extends StatelessWidget {
 
     if (nfc == null) {
       return const _NfcDetailsMessage(
-        icon: Icons.nfc_outlined,
+        icon: Icons.receipt_long_outlined,
         title: 'NFC não encontrada.',
       );
     }
@@ -136,52 +134,46 @@ class NfcDetailsPage extends StatelessWidget {
         final customerName =
             customerSnapshot.data?.name ?? 'Cliente não encontrado';
 
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _NfcHeader(
-              nfc: nfc,
-              customerName: customerName,
-            ),
-            const SizedBox(height: 24),
-            _DetailTile(
-              icon: Icons.person_outline,
-              label: 'Cliente',
-              value: customerName,
-            ),
-            _DetailTile(
-              icon: Icons.event_outlined,
-              label: 'Data',
-              value: nfc.date,
-            ),
-            _DetailTile(
-              icon: Icons.confirmation_number_outlined,
-              label: 'Número',
-              value: nfc.code,
-            ),
-            _DetailTile(
-              icon: Icons.paid_outlined,
-              label: 'Valor da nota',
-              value: 'R\$ ${nfc.totalValue}',
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Produtos',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            if (nfc.products.isEmpty)
-              const Text('Nenhum produto vinculado.')
-            else
-              ...nfc.products.map((product) {
-                return _NfcProductTile(product: product);
-              }),
-            const SizedBox(height: 24),
-            _NfcReturnsSection(
-              nfc: nfc,
-              repository: nfcReturnsRepository,
-            ),
-          ],
+        return AppRefreshIndicator(
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            children: [
+              _NfcHeader(nfc: nfc, customerName: customerName),
+              const SizedBox(height: 24),
+              _DetailTile(
+                icon: Icons.person_outline,
+                label: 'Cliente',
+                value: customerName,
+              ),
+              _DetailTile(
+                icon: Icons.event_outlined,
+                label: 'Data',
+                value: nfc.date,
+              ),
+              _DetailTile(
+                icon: Icons.confirmation_number_outlined,
+                label: 'Número',
+                value: nfc.code,
+              ),
+              _DetailTile(
+                icon: Icons.paid_outlined,
+                label: 'Valor da nota',
+                value: 'R\$ ${nfc.totalValue}',
+              ),
+              const SizedBox(height: 16),
+              Text('Produtos', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              if (nfc.products.isEmpty)
+                const Text('Nenhum produto vinculado.')
+              else
+                ...nfc.products.map((product) {
+                  return _NfcProductTile(product: product);
+                }),
+              const SizedBox(height: 24),
+              _NfcReturnsSection(nfc: nfc, repository: nfcReturnsRepository),
+            ],
+          ),
         );
       },
     );
@@ -189,10 +181,7 @@ class NfcDetailsPage extends StatelessWidget {
 }
 
 class _NfcReturnsSection extends StatelessWidget {
-  const _NfcReturnsSection({
-    required this.nfc,
-    required this.repository,
-  });
+  const _NfcReturnsSection({required this.nfc, required this.repository});
 
   final NfcRecord nfc;
   final NfcReturnsRepository repository;
@@ -262,10 +251,7 @@ class _NfcReturnsSection extends StatelessWidget {
     }
 
     try {
-      await repository.delete(
-        nfcId: nfc.id,
-        id: nfcReturn.id,
-      );
+      await repository.delete(nfcId: nfc.id, id: nfcReturn.id);
       return true;
     } catch (error) {
       if (!context.mounted) {
@@ -316,8 +302,8 @@ class _NfcReturnsSection extends StatelessWidget {
                   ),
                 ),
                 FilledButton.icon(
-                  onPressed: snapshot.connectionState ==
-                              ConnectionState.waiting ||
+                  onPressed:
+                      snapshot.connectionState == ConnectionState.waiting ||
                           !hasAvailableQuantity
                       ? null
                       : () => _openReturnForm(context, returns),
@@ -332,9 +318,7 @@ class _NfcReturnsSection extends StatelessWidget {
             else if (snapshot.hasError)
               const Text('Não foi possível carregar as devoluções.')
             else ...[
-              _NfcReturnStatusBanner(
-                status: status,
-              ),
+              _NfcReturnStatusBanner(status: status),
               if (status == NfcReturnStatus.fullyReturned) ...[
                 const SizedBox(height: 8),
                 const Text('Todos os produtos desta NFC já foram devolvidos.'),
@@ -346,10 +330,7 @@ class _NfcReturnsSection extends StatelessWidget {
                 )
               else ...[
                 const SizedBox(height: 12),
-                _NfcReturnsOverview(
-                  nfc: nfc,
-                  returns: returns,
-                ),
+                _NfcReturnsOverview(nfc: nfc, returns: returns),
                 const SizedBox(height: 8),
                 ...List.generate(returns.length, (index) {
                   final nfcReturn = returns[index];
@@ -360,11 +341,8 @@ class _NfcReturnsSection extends StatelessWidget {
                     onDelete: () async {
                       await _deleteReturn(context, nfcReturn);
                     },
-                    onTap: () => _openReturnDetails(
-                      context,
-                      nfcReturn,
-                      returns,
-                    ),
+                    onTap: () =>
+                        _openReturnDetails(context, nfcReturn, returns),
                   );
                 }),
               ],
@@ -386,20 +364,20 @@ class _NfcReturnStatusBanner extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final (label, icon, color) = switch (status) {
       NfcReturnStatus.none => (
-          'Sem devolução',
-          Icons.info_outline,
-          colorScheme.outline,
-        ),
+        'Sem devolução',
+        Icons.info_outline,
+        colorScheme.outline,
+      ),
       NfcReturnStatus.partiallyReturned => (
-          'Parcialmente devolvida',
-          Icons.change_circle_outlined,
-          colorScheme.primary,
-        ),
+        'Parcialmente devolvida',
+        Icons.change_circle_outlined,
+        colorScheme.primary,
+      ),
       NfcReturnStatus.fullyReturned => (
-          'Totalmente devolvida',
-          Icons.check_circle_outline,
-          colorScheme.tertiary,
-        ),
+        'Totalmente devolvida',
+        Icons.check_circle_outline,
+        colorScheme.tertiary,
+      ),
     };
 
     return DecoratedBox(
@@ -417,9 +395,9 @@ class _NfcReturnStatusBanner extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               label,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: color,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(color: color),
             ),
           ],
         ),
@@ -429,10 +407,7 @@ class _NfcReturnStatusBanner extends StatelessWidget {
 }
 
 class _NfcReturnsOverview extends StatelessWidget {
-  const _NfcReturnsOverview({
-    required this.nfc,
-    required this.returns,
-  });
+  const _NfcReturnsOverview({required this.nfc, required this.returns});
 
   final NfcRecord nfc;
   final List<NfcReturnRecord> returns;
@@ -452,10 +427,7 @@ class _NfcReturnsOverview extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Geral',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          Text('Geral', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -482,10 +454,7 @@ class _NfcReturnsOverview extends StatelessWidget {
             backgroundColor: colorScheme.surfaceContainerHighest,
           ),
           const SizedBox(height: 16),
-          Text(
-            'Por produto',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          Text('Por produto', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 6),
           ...nfc.products.map((product) {
             final returnedQuantity = calculateReturnedQuantity(
@@ -545,14 +514,9 @@ class _NfcReturnsOverviewProduct extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text(name),
-              ),
+              Expanded(child: Text(name)),
               const SizedBox(width: 12),
-              Text(
-                'R\$ ${_formatCurrency(value)}',
-                textAlign: TextAlign.end,
-              ),
+              Text('R\$ ${_formatCurrency(value)}', textAlign: TextAlign.end),
             ],
           ),
           const SizedBox(height: 4),
@@ -591,10 +555,7 @@ class _NfcReturnsOverviewProduct extends StatelessWidget {
 }
 
 class _NfcHeader extends StatelessWidget {
-  const _NfcHeader({
-    required this.nfc,
-    required this.customerName,
-  });
+  const _NfcHeader({required this.nfc, required this.customerName});
 
   final NfcRecord nfc;
   final String customerName;
@@ -608,7 +569,7 @@ class _NfcHeader extends StatelessWidget {
         CircleAvatar(
           radius: 40,
           backgroundColor: colorScheme.primaryContainer,
-          child: const Icon(Icons.nfc, size: 36),
+          child: const Icon(Icons.receipt_long, size: 36),
         ),
         const SizedBox(height: 16),
         Text(
@@ -743,11 +704,12 @@ class _NfcReturnCard extends StatelessWidget {
                             );
                             final productPercentage =
                                 calculateProductReturnPercentage(
-                              originalProduct,
+                                  originalProduct,
+                                  product,
+                                );
+                            final subtotal = calculateReturnProductSubtotal(
                               product,
                             );
-                            final subtotal =
-                                calculateReturnProductSubtotal(product);
 
                             return _NfcReturnProductSummary(
                               product: product,
@@ -770,10 +732,7 @@ class _NfcReturnCard extends StatelessWidget {
 }
 
 class _NfcReturnMetric extends StatelessWidget {
-  const _NfcReturnMetric({
-    required this.label,
-    required this.value,
-  });
+  const _NfcReturnMetric({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -784,14 +743,8 @@ class _NfcReturnMetric extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+        Text(value, style: Theme.of(context).textTheme.titleSmall),
       ],
     );
   }
@@ -889,9 +842,7 @@ class _NfcProductTile extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       leading: const Icon(Icons.inventory_2_outlined),
       title: Text(product.name),
-      subtitle: Text(
-        '${product.quantityKg} kg | R\$ ${product.pricePerKg}/kg',
-      ),
+      subtitle: Text('${product.quantityKg} kg | R\$ ${product.pricePerKg}/kg'),
       trailing: Text(
         subtotal == null ? '-' : 'R\$ $subtotal',
         style: Theme.of(context).textTheme.bodyMedium,
@@ -956,10 +907,7 @@ class _DetailTile extends StatelessWidget {
 }
 
 class _NfcDetailsMessage extends StatelessWidget {
-  const _NfcDetailsMessage({
-    required this.icon,
-    required this.title,
-  });
+  const _NfcDetailsMessage({required this.icon, required this.title});
 
   final IconData icon;
   final String title;

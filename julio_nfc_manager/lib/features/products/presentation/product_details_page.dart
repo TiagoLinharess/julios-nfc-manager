@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/presentation/app_refresh_indicator.dart';
 import '../data/products_repository.dart';
 import '../domain/product.dart';
 
@@ -77,22 +78,25 @@ class ProductDetailsPage extends StatelessWidget {
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _ProductHeader(product: product),
-        const SizedBox(height: 24),
-        _DetailTile(
-          icon: Icons.inventory_2_outlined,
-          label: 'Nome',
-          value: product.name,
-        ),
-        _DetailTile(
-          icon: Icons.paid_outlined,
-          label: 'Valor por kg',
-          value: 'R\$ ${product.pricePerKg}/kg',
-        ),
-      ],
+    return AppRefreshIndicator(
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
+          _ProductHeader(product: product),
+          const SizedBox(height: 24),
+          _DetailTile(
+            icon: Icons.inventory_2_outlined,
+            label: 'Nome',
+            value: product.name,
+          ),
+          _DetailTile(
+            icon: Icons.paid_outlined,
+            label: 'Valor por kg',
+            value: 'R\$ ${product.pricePerKg}/kg',
+          ),
+        ],
+      ),
     );
   }
 }
@@ -153,10 +157,7 @@ class _DetailTile extends StatelessWidget {
 }
 
 class _ProductDetailsMessage extends StatelessWidget {
-  const _ProductDetailsMessage({
-    required this.icon,
-    required this.title,
-  });
+  const _ProductDetailsMessage({required this.icon, required this.title});
 
   final IconData icon;
   final String title;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/formatting/br_decimal_formatter.dart';
+import '../../../core/presentation/app_refresh_indicator.dart';
 import '../../nfc/domain/nfc_record.dart';
 import '../data/nfc_returns_repository.dart';
 import '../domain/nfc_return_product_snapshot.dart';
@@ -68,10 +69,7 @@ class NfcReturnDetailsPage extends StatelessWidget {
     }
 
     try {
-      await repository.delete(
-        nfcId: nfc.id,
-        id: nfcReturn.id,
-      );
+      await repository.delete(nfcId: nfc.id, id: nfcReturn.id);
 
       if (context.mounted) {
         Navigator.of(context).pop();
@@ -147,39 +145,39 @@ class NfcReturnDetailsPage extends StatelessWidget {
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _NfcReturnHeader(nfcReturn: nfcReturn),
-        const SizedBox(height: 24),
-        _DetailTile(
-          icon: Icons.confirmation_number_outlined,
-          label: 'Número da devolução',
-          value: nfcReturn.code,
-        ),
-        _DetailTile(
-          icon: Icons.event_outlined,
-          label: 'Data',
-          value: nfcReturn.date,
-        ),
-        _DetailTile(
-          icon: Icons.paid_outlined,
-          label: 'Valor da devolução',
-          value: 'R\$ ${nfcReturn.totalValue}',
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Produtos',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        if (nfcReturn.products.isEmpty)
-          const Text('Nenhum produto devolvido.')
-        else
-          ...nfcReturn.products.map((product) {
-            return _NfcReturnProductTile(product: product);
-          }),
-      ],
+    return AppRefreshIndicator(
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
+          _NfcReturnHeader(nfcReturn: nfcReturn),
+          const SizedBox(height: 24),
+          _DetailTile(
+            icon: Icons.confirmation_number_outlined,
+            label: 'Número da devolução',
+            value: nfcReturn.code,
+          ),
+          _DetailTile(
+            icon: Icons.event_outlined,
+            label: 'Data',
+            value: nfcReturn.date,
+          ),
+          _DetailTile(
+            icon: Icons.paid_outlined,
+            label: 'Valor da devolução',
+            value: 'R\$ ${nfcReturn.totalValue}',
+          ),
+          const SizedBox(height: 16),
+          Text('Produtos', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          if (nfcReturn.products.isEmpty)
+            const Text('Nenhum produto devolvido.')
+          else
+            ...nfcReturn.products.map((product) {
+              return _NfcReturnProductTile(product: product);
+            }),
+        ],
+      ),
     );
   }
 }
@@ -236,9 +234,7 @@ class _NfcReturnProductTile extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       leading: const Icon(Icons.inventory_2_outlined),
       title: Text(product.name),
-      subtitle: Text(
-        '${product.quantityKg} kg | R\$ ${product.pricePerKg}/kg',
-      ),
+      subtitle: Text('${product.quantityKg} kg | R\$ ${product.pricePerKg}/kg'),
       trailing: Text(
         subtotal == null ? '-' : 'R\$ $subtotal',
         style: Theme.of(context).textTheme.bodyMedium,
@@ -281,10 +277,7 @@ class _DetailTile extends StatelessWidget {
 }
 
 class _NfcReturnDetailsMessage extends StatelessWidget {
-  const _NfcReturnDetailsMessage({
-    required this.icon,
-    required this.title,
-  });
+  const _NfcReturnDetailsMessage({required this.icon, required this.title});
 
   final IconData icon;
   final String title;

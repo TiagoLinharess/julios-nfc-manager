@@ -4,16 +4,14 @@ import 'package:flutter/services.dart';
 
 import '../../../core/formatting/br_decimal_formatter.dart';
 import '../../../core/firestore/user_firestore.dart';
+import '../../../core/presentation/app_refresh_indicator.dart';
 import '../../../core/presentation/responsive_form_dialog.dart';
 import '../data/products_repository.dart';
 import '../domain/product.dart';
 import 'product_details_page.dart';
 
 class ProductsPage extends StatefulWidget {
-  const ProductsPage({
-    required this.user,
-    super.key,
-  });
+  const ProductsPage({required this.user, super.key});
 
   final User user;
 
@@ -103,9 +101,9 @@ class _ProductsPageState extends State<ProductsPage> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _openProductDetails(Product product) async {
@@ -153,58 +151,61 @@ class _ProductsPageState extends State<ProductsPage> {
             );
           }
 
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-            itemCount: products.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final product = products[index];
+          return AppRefreshIndicator(
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+              itemCount: products.length,
+              separatorBuilder: (context, index) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final product = products[index];
 
-              return ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 6,
-                ),
-                leading: CircleAvatar(
-                  backgroundColor: colorScheme.primaryContainer,
-                  child: Text(
-                    product.name.trim().isEmpty
-                        ? '?'
-                        : product.name.trim().substring(0, 1).toUpperCase(),
+                return ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
                   ),
-                ),
-                title: Text(product.name),
-                subtitle: Text('R\$ ${product.pricePerKg}/kg'),
-                trailing: PopupMenuButton<_ProductAction>(
-                  tooltip: 'Acoes',
-                  onSelected: (action) {
-                    switch (action) {
-                      case _ProductAction.edit:
-                        _showProductForm(product);
-                      case _ProductAction.delete:
-                        _confirmDelete(product);
-                    }
-                  },
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(
-                      value: _ProductAction.edit,
-                      child: ListTile(
-                        leading: Icon(Icons.edit_outlined),
-                        title: Text('Editar'),
-                      ),
+                  leading: CircleAvatar(
+                    backgroundColor: colorScheme.primaryContainer,
+                    child: Text(
+                      product.name.trim().isEmpty
+                          ? '?'
+                          : product.name.trim().substring(0, 1).toUpperCase(),
                     ),
-                    PopupMenuItem(
-                      value: _ProductAction.delete,
-                      child: ListTile(
-                        leading: Icon(Icons.delete_outline),
-                        title: Text('Excluir'),
+                  ),
+                  title: Text(product.name),
+                  subtitle: Text('R\$ ${product.pricePerKg}/kg'),
+                  trailing: PopupMenuButton<_ProductAction>(
+                    tooltip: 'Acoes',
+                    onSelected: (action) {
+                      switch (action) {
+                        case _ProductAction.edit:
+                          _showProductForm(product);
+                        case _ProductAction.delete:
+                          _confirmDelete(product);
+                      }
+                    },
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(
+                        value: _ProductAction.edit,
+                        child: ListTile(
+                          leading: Icon(Icons.edit_outlined),
+                          title: Text('Editar'),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                onTap: () => _openProductDetails(product),
-              );
-            },
+                      PopupMenuItem(
+                        value: _ProductAction.delete,
+                        child: ListTile(
+                          leading: Icon(Icons.delete_outline),
+                          title: Text('Excluir'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  onTap: () => _openProductDetails(product),
+                );
+              },
+            ),
           );
         },
       ),
@@ -336,10 +337,7 @@ class _ProductFormDialogState extends State<_ProductFormDialog> {
 }
 
 class _ProductFormResult {
-  const _ProductFormResult({
-    required this.name,
-    required this.pricePerKg,
-  });
+  const _ProductFormResult({required this.name, required this.pricePerKg});
 
   final String name;
   final String pricePerKg;
@@ -389,7 +387,4 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-enum _ProductAction {
-  edit,
-  delete,
-}
+enum _ProductAction { edit, delete }

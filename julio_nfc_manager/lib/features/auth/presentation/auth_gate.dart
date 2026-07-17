@@ -84,10 +84,7 @@ class _AuthGateState extends State<AuthGate> {
           );
         }
 
-        return AppShell(
-          user: user,
-          onSignOut: _signOut,
-        );
+        return AppShell(user: user, onSignOut: _signOut);
       },
     );
   }
@@ -109,46 +106,170 @@ class _LoginPage extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 360),
-            child: Padding(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isCompactHeight = constraints.maxHeight < 620;
+
+            return SingleChildScrollView(
               padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Icon(Icons.nfc, size: 64, color: colorScheme.primary),
-                  const SizedBox(height: 24),
-                  Text(
-                    'NFC Manager',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 32),
-                  FilledButton.icon(
-                    onPressed: isLoading ? null : onSignInWithGoogle,
-                    icon: isLoading
-                        ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.login),
-                    label: const Text('Entrar com Google'),
-                  ),
-                  if (errorMessage != null) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: colorScheme.error),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - 48,
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 430),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(28),
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.all(isCompactHeight ? 20 : 28),
+                            child: Column(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(24),
+                                  child: Image.asset(
+                                    'assets/branding/app_icon_1024.png',
+                                    width: isCompactHeight ? 82 : 104,
+                                    height: isCompactHeight ? 82 : 104,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                SizedBox(height: isCompactHeight ? 16 : 20),
+                                Text(
+                                  'NFC Manager',
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: colorScheme.onPrimaryContainer,
+                                      ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Controle notas, produtos e devoluções com sincronização em tempo real.',
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: colorScheme.onPrimaryContainer
+                                            .withValues(alpha: 0.78),
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: isCompactHeight ? 18 : 24),
+                        FilledButton.icon(
+                          onPressed: isLoading ? null : onSignInWithGoogle,
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(54),
+                          ),
+                          icon: isLoading
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.login),
+                          label: const Text('Entrar com Google'),
+                        ),
+                        if (errorMessage != null) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            errorMessage!,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: colorScheme.error),
+                          ),
+                        ],
+                        SizedBox(height: isCompactHeight ? 20 : 28),
+                        const _LoginFeatureStrip(),
+                      ],
                     ),
-                  ],
-                ],
+                  ),
+                ),
               ),
-            ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _LoginFeatureStrip extends StatelessWidget {
+  const _LoginFeatureStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        Expanded(
+          child: _LoginFeatureItem(
+            icon: Icons.receipt_long_outlined,
+            label: 'NFCs',
           ),
+        ),
+        SizedBox(width: 8),
+        Expanded(
+          child: _LoginFeatureItem(
+            icon: Icons.people_outline,
+            label: 'Clientes',
+          ),
+        ),
+        SizedBox(width: 8),
+        Expanded(
+          child: _LoginFeatureItem(
+            icon: Icons.inventory_2_outlined,
+            label: 'Produtos',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LoginFeatureItem extends StatelessWidget {
+  const _LoginFeatureItem({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.7),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        child: Column(
+          children: [
+            Icon(icon, size: 22, color: colorScheme.primary),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+          ],
         ),
       ),
     );

@@ -10,8 +10,194 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    match /users/{userId}/{document=**} {
-      allow read, write: if isOwner(userId);
+    function isString(value) {
+      return value is string && value.size() > 0 && value.size() <= 200;
+    }
+
+    function isOptionalString(value) {
+      return value == null || value is string;
+    }
+
+    function isBrDate(value) {
+      return value is string && value.matches('^\\d{2}/\\d{2}/\\d{4}$');
+    }
+
+    function isBrDecimal(value) {
+      return value is string && value.matches('^\\d+(,\\d{1,2})?$');
+    }
+
+    function isTimestamp(value) {
+      return value is timestamp;
+    }
+
+    function hasOnlyFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function hasAllFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function keepsCreatedAt() {
+      return request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    function validUserProfile() {
+      return hasOnlyFields([
+          'displayName',
+          'email',
+          'photoUrl',
+          'updatedAt'
+        ])
+        && isOptionalString(request.resource.data.displayName)
+        && isOptionalString(request.resource.data.email)
+        && isOptionalString(request.resource.data.photoUrl)
+        && isTimestamp(request.resource.data.updatedAt);
+    }
+
+    function validCustomer() {
+      return hasOnlyFields([
+          'name',
+          'cnpj',
+          'cnpjDigits',
+          'createdAt',
+          'updatedAt'
+        ])
+        && hasAllFields([
+          'name',
+          'cnpj',
+          'cnpjDigits',
+          'createdAt',
+          'updatedAt'
+        ])
+        && isString(request.resource.data.name)
+        && request.resource.data.cnpj is string
+        && request.resource.data.cnpj.matches('^\\d{2}\\.\\d{3}\\.\\d{3}/\\d{4}-\\d{2}$')
+        && request.resource.data.cnpjDigits is string
+        && request.resource.data.cnpjDigits.matches('^\\d{14}$')
+        && isTimestamp(request.resource.data.createdAt)
+        && isTimestamp(request.resource.data.updatedAt);
+    }
+
+    function validCustomerCnpj(cnpjDigits) {
+      return cnpjDigits.matches('^\\d{14}$')
+        && hasOnlyFields(['customerId', 'createdAt', 'updatedAt'])
+        && hasAllFields(['customerId', 'createdAt', 'updatedAt'])
+        && isString(request.resource.data.customerId)
+        && isTimestamp(request.resource.data.createdAt)
+        && isTimestamp(request.resource.data.updatedAt);
+    }
+
+    function validProduct() {
+      return hasOnlyFields([
+          'name',
+          'pricePerKg',
+          'createdAt',
+          'updatedAt'
+        ])
+        && hasAllFields([
+          'name',
+          'pricePerKg',
+          'createdAt',
+          'updatedAt'
+        ])
+        && isString(request.resource.data.name)
+        && isBrDecimal(request.resource.data.pricePerKg)
+        && isTimestamp(request.resource.data.createdAt)
+        && isTimestamp(request.resource.data.updatedAt);
+    }
+
+    function validNfc() {
+      return hasOnlyFields([
+          'code',
+          'date',
+          'products',
+          'customerId',
+          'totalValue',
+          'createdAt',
+          'updatedAt'
+        ])
+        && hasAllFields([
+          'code',
+          'date',
+          'products',
+          'customerId',
+          'totalValue',
+          'createdAt',
+          'updatedAt'
+        ])
+        && isString(request.resource.data.code)
+        && isBrDate(request.resource.data.date)
+        && request.resource.data.products is list
+        && request.resource.data.products.size() > 0
+        && request.resource.data.products.size() <= 100
+        && isString(request.resource.data.customerId)
+        && isBrDecimal(request.resource.data.totalValue)
+        && isTimestamp(request.resource.data.createdAt)
+        && isTimestamp(request.resource.data.updatedAt);
+    }
+
+    function validNfcReturn() {
+      return hasOnlyFields([
+          'code',
+          'date',
+          'totalValue',
+          'products',
+          'createdAt',
+          'updatedAt'
+        ])
+        && hasAllFields([
+          'code',
+          'date',
+          'totalValue',
+          'products',
+          'createdAt',
+          'updatedAt'
+        ])
+        && isString(request.resource.data.code)
+        && isBrDate(request.resource.data.date)
+        && isBrDecimal(request.resource.data.totalValue)
+        && request.resource.data.products is list
+        && request.resource.data.products.size() > 0
+        && request.resource.data.products.size() <= 100
+        && isTimestamp(request.resource.data.createdAt)
+        && isTimestamp(request.resource.data.updatedAt);
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && validUserProfile();
+      allow delete: if false;
+
+      match /customers/{customerId} {
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && validCustomer();
+        allow update: if isOwner(userId) && validCustomer() && keepsCreatedAt();
+      }
+
+      match /customerCnpjs/{cnpjDigits} {
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && validCustomerCnpj(cnpjDigits);
+        allow update: if false;
+      }
+
+      match /products/{productId} {
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && validProduct();
+        allow update: if isOwner(userId) && validProduct() && keepsCreatedAt();
+      }
+
+      match /nfc/{nfcId} {
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && validNfc();
+        allow update: if isOwner(userId) && validNfc() && keepsCreatedAt();
+
+        match /returns/{returnId} {
+          allow read, delete: if isOwner(userId);
+          allow create: if isOwner(userId) && validNfcReturn();
+          allow update: if isOwner(userId) && validNfcReturn() && keepsCreatedAt();
+        }
+      }
     }
 
     match /{document=**} {

@@ -126,7 +126,7 @@ class _NfcFormPageState extends State<NfcFormPage> {
     });
 
     if (hasInvalidQuantity) {
-      _showError('Informe uma quantidade valida para cada produto.');
+      _showError('Informe uma quantidade válida para cada produto.');
       return;
     }
 
@@ -176,17 +176,16 @@ class _NfcFormPageState extends State<NfcFormPage> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<_NfcFormData> _loadFormData() async {
     final customers = await widget.customersRepository.getAll();
     final products = await widget.productsRepository.getAll();
-    final snapshotOptions = widget.nfc?.products
-            .map(_NfcProductOption.fromSnapshot)
-            .toList() ??
+    final snapshotOptions =
+        widget.nfc?.products.map(_NfcProductOption.fromSnapshot).toList() ??
         const <_NfcProductOption>[];
     final snapshotProductIds = {
       for (final product in snapshotOptions) product.productId,
@@ -512,7 +511,7 @@ class _NfcFormBody extends StatelessWidget {
               }
 
               if (!_isValidBrDate(date)) {
-                return 'Informe uma data valida.';
+                return 'Informe uma data válida.';
               }
 
               return null;
@@ -584,10 +583,7 @@ class _NfcFormBody extends StatelessWidget {
                           },
                         ),
                         const Flexible(
-                          child: Text(
-                            'Editar valor',
-                            maxLines: 2,
-                          ),
+                          child: Text('Editar valor', maxLines: 2),
                         ),
                       ],
                     ),
@@ -598,7 +594,8 @@ class _NfcFormBody extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: customers.any((customer) => customer.id == selectedCustomerId)
+            initialValue:
+                customers.any((customer) => customer.id == selectedCustomerId)
                 ? selectedCustomerId
                 : null,
             items: customers.map((customer) {
@@ -621,10 +618,7 @@ class _NfcFormBody extends StatelessWidget {
             },
           ),
           const SizedBox(height: 24),
-          Text(
-            'Produtos',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text('Produtos', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           if (products.isEmpty)
             const Text('Cadastre produtos antes de criar uma NFC.')
@@ -634,21 +628,25 @@ class _NfcFormBody extends StatelessWidget {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: products.any(
-                      (product) =>
-                          product.id == productToAddId &&
-                          !selectedProductIds.contains(product.id),
-                    )
+                    initialValue:
+                        products.any(
+                          (product) =>
+                              product.id == productToAddId &&
+                              !selectedProductIds.contains(product.id),
+                        )
                         ? productToAddId
                         : null,
                     items: products
-                        .where((product) => !selectedProductIds.contains(product.id))
+                        .where(
+                          (product) => !selectedProductIds.contains(product.id),
+                        )
                         .map((product) {
-                      return DropdownMenuItem(
-                        value: product.id,
-                        child: Text(product.name),
-                      );
-                    }).toList(),
+                          return DropdownMenuItem(
+                            value: product.id,
+                            child: Text(product.name),
+                          );
+                        })
+                        .toList(),
                     decoration: const InputDecoration(
                       labelText: 'Produto',
                       prefixIcon: Icon(Icons.inventory_2_outlined),
@@ -680,57 +678,58 @@ class _NfcFormBody extends StatelessWidget {
                   (product) => selectedProductIds.contains(product.productId),
                 )
                 .map((product) {
-              final controller = quantityControllers[product.productId];
+                  final controller = quantityControllers[product.productId];
 
-              if (controller == null) {
-                return const SizedBox.shrink();
-              }
+                  if (controller == null) {
+                    return const SizedBox.shrink();
+                  }
 
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(product.name),
-                subtitle: Text('R\$ ${product.pricePerKg}/kg'),
-                trailing: SizedBox(
-                  width: 148,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: controller,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp('[0-9,]'),
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(product.name),
+                    subtitle: Text('R\$ ${product.pricePerKg}/kg'),
+                    trailing: SizedBox(
+                      width: 148,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: controller,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp('[0-9,]'),
+                                ),
+                              ],
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              decoration: const InputDecoration(
+                                labelText: 'Kg',
+                                suffixText: 'kg',
+                              ),
+                              onChanged: (_) => onQuantityChanged(),
+                              validator: (value) {
+                                final quantity = parseBrDecimal(value ?? '');
+
+                                if (quantity == null || quantity <= 0) {
+                                  return 'Valor inválido';
+                                }
+
+                                return null;
+                              },
                             ),
-                          ],
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
                           ),
-                          decoration: const InputDecoration(
-                            labelText: 'Kg',
-                            suffixText: 'kg',
+                          IconButton(
+                            onPressed: () => onRemoveProduct(product.productId),
+                            tooltip: 'Remover',
+                            icon: const Icon(Icons.close),
                           ),
-                          onChanged: (_) => onQuantityChanged(),
-                          validator: (value) {
-                            final quantity = parseBrDecimal(value ?? '');
-
-                            if (quantity == null || quantity <= 0) {
-                              return 'Valor inválido';
-                            }
-
-                            return null;
-                          },
-                        ),
+                        ],
                       ),
-                      IconButton(
-                        onPressed: () => onRemoveProduct(product.productId),
-                        tooltip: 'Remover',
-                        icon: const Icon(Icons.close),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
+                    ),
+                  );
+                }),
         ],
       ),
     );

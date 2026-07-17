@@ -3,17 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
 import '../../../core/firestore/user_firestore.dart';
+import '../../../core/presentation/app_refresh_indicator.dart';
 import '../../../core/presentation/responsive_form_dialog.dart';
 import '../../../core/validation/cnpj_validator.dart';
+import '../../nfc/data/nfc_repository.dart';
+import '../../nfc_returns/data/nfc_returns_repository.dart';
+import '../../products/data/products_repository.dart';
 import '../data/customers_repository.dart';
 import '../domain/customer.dart';
 import 'customer_details_page.dart';
 
 class CustomersPage extends StatefulWidget {
-  const CustomersPage({
-    required this.user,
-    super.key,
-  });
+  const CustomersPage({required this.user, super.key});
 
   final User user;
 
@@ -23,13 +24,18 @@ class CustomersPage extends StatefulWidget {
 
 class _CustomersPageState extends State<CustomersPage> {
   late final CustomersRepository _customersRepository;
+  late final NfcRepository _nfcRepository;
+  late final NfcReturnsRepository _nfcReturnsRepository;
+  late final ProductsRepository _productsRepository;
 
   @override
   void initState() {
     super.initState();
-    _customersRepository = CustomersRepository(
-      UserFirestore(uid: widget.user.uid),
-    );
+    final store = UserFirestore(uid: widget.user.uid);
+    _customersRepository = CustomersRepository(store);
+    _nfcRepository = NfcRepository(store);
+    _nfcReturnsRepository = NfcReturnsRepository(store);
+    _productsRepository = ProductsRepository(store);
   }
 
   Future<void> _showCustomerForm([Customer? customer]) async {
@@ -44,10 +50,7 @@ class _CustomersPageState extends State<CustomersPage> {
 
     try {
       if (customer == null) {
-        await _customersRepository.create(
-          name: result.name,
-          cnpj: result.cnpj,
-        );
+        await _customersRepository.create(name: result.name, cnpj: result.cnpj);
       } else {
         await _customersRepository.update(
           id: customer.id,
@@ -109,9 +112,9 @@ class _CustomersPageState extends State<CustomersPage> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _openCustomerDetails(Customer customer) async {
@@ -121,6 +124,9 @@ class _CustomersPageState extends State<CustomersPage> {
           return CustomerDetailsPage(
             customerId: customer.id,
             customersRepository: _customersRepository,
+            nfcRepository: _nfcRepository,
+            nfcReturnsRepository: _nfcReturnsRepository,
+            productsRepository: _productsRepository,
             onEdit: _showCustomerForm,
             onDelete: _confirmDelete,
           );
@@ -159,58 +165,61 @@ class _CustomersPageState extends State<CustomersPage> {
             );
           }
 
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-            itemCount: customers.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final customer = customers[index];
+          return AppRefreshIndicator(
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+              itemCount: customers.length,
+              separatorBuilder: (context, index) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final customer = customers[index];
 
-              return ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 6,
-                ),
-                leading: CircleAvatar(
-                  backgroundColor: colorScheme.primaryContainer,
-                  child: Text(
-                    customer.name.trim().isEmpty
-                        ? '?'
-                        : customer.name.trim().substring(0, 1).toUpperCase(),
+                return ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
                   ),
-                ),
-                title: Text(customer.name),
-                subtitle: Text(customer.cnpj),
-                trailing: PopupMenuButton<_CustomerAction>(
-                  tooltip: 'Acoes',
-                  onSelected: (action) {
-                    switch (action) {
-                      case _CustomerAction.edit:
-                        _showCustomerForm(customer);
-                      case _CustomerAction.delete:
-                        _confirmDelete(customer);
-                    }
-                  },
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(
-                      value: _CustomerAction.edit,
-                      child: ListTile(
-                        leading: Icon(Icons.edit_outlined),
-                        title: Text('Editar'),
-                      ),
+                  leading: CircleAvatar(
+                    backgroundColor: colorScheme.primaryContainer,
+                    child: Text(
+                      customer.name.trim().isEmpty
+                          ? '?'
+                          : customer.name.trim().substring(0, 1).toUpperCase(),
                     ),
-                    PopupMenuItem(
-                      value: _CustomerAction.delete,
-                      child: ListTile(
-                        leading: Icon(Icons.delete_outline),
-                        title: Text('Excluir'),
+                  ),
+                  title: Text(customer.name),
+                  subtitle: Text(customer.cnpj),
+                  trailing: PopupMenuButton<_CustomerAction>(
+                    tooltip: 'Acoes',
+                    onSelected: (action) {
+                      switch (action) {
+                        case _CustomerAction.edit:
+                          _showCustomerForm(customer);
+                        case _CustomerAction.delete:
+                          _confirmDelete(customer);
+                      }
+                    },
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(
+                        value: _CustomerAction.edit,
+                        child: ListTile(
+                          leading: Icon(Icons.edit_outlined),
+                          title: Text('Editar'),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                onTap: () => _openCustomerDetails(customer),
-              );
-            },
+                      PopupMenuItem(
+                        value: _CustomerAction.delete,
+                        child: ListTile(
+                          leading: Icon(Icons.delete_outline),
+                          title: Text('Excluir'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  onTap: () => _openCustomerDetails(customer),
+                );
+              },
+            ),
           );
         },
       ),
@@ -342,10 +351,7 @@ class _CustomerFormDialogState extends State<_CustomerFormDialog> {
 }
 
 class _CustomerFormResult {
-  const _CustomerFormResult({
-    required this.name,
-    required this.cnpj,
-  });
+  const _CustomerFormResult({required this.name, required this.cnpj});
 
   final String name;
   final String cnpj;
@@ -395,7 +401,4 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-enum _CustomerAction {
-  edit,
-  delete,
-}
+enum _CustomerAction { edit, delete }
